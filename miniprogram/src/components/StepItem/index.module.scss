@@ -1,0 +1,74 @@
+@use '@/styles/variables.scss' as *;
+
+.step {
+  display: flex;
+  flex-direction: row;
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: $spacing-md;
+}
+
+.dot {
+  flex: none;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: $radius-round;
+  background: $color-green-light;
+  border: 2rpx solid $color-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dotText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  color: $color-primary-dark;
+}
+
+.line {
+  flex: 1;
+  width: 2rpx;
+  min-height: 32rpx;
+  background: $color-border;
+  margin: 6rpx 0;
+}
+
+.body {
+  flex: 1;
+  padding-bottom: $spacing-lg;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-xs;
+}
+
+.title {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-right: $spacing-sm;
+}
+
+.tag {
+  flex: none;
+  padding: 2rpx 12rpx;
+  background: $color-gold-light;
+  color: #8a6510;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+}
+
+.desc {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-loose;
+}

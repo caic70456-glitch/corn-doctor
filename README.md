@@ -30,6 +30,8 @@
     └── corn_ws/src/
         ├── corn_detect/       # RealSense 深度相机: 病害识别 + 三维坐标输出 + 串口下发
         └── corn_doctor_ros2/  # USB 相机手持机: 采集 + 识别 + 结论发布
+├── docs/                                # 三维定位方案网页版（GitHub Pages 自 docs/ 部署）
+└── miniprogram/                         # 三维定位方案微信小程序（Taro 4.1.9 + React + TypeScript）
 ```
 
 ## 快速开始
@@ -58,6 +60,27 @@ ros2 launch corn_detect detect.launch.py
 ```
 
 详细说明：[RealSense三维定位方案](AIC-2026-46559581-AI+农业-玉米医生-树莓派边缘部署/AIC-2026-46559581-AI+农业-玉米医生-RealSense三维定位方案.md) · [USB相机实物部署说明](AIC-2026-46559581-AI+农业-玉米医生-树莓派边缘部署/AIC-2026-46559581-AI+农业-玉米医生-USB相机实物部署说明.md)
+
+## 方案展示（网页 / 微信小程序）
+
+三维定位方案除 Markdown 文档外，还提供两种移动友好的展示形态：
+
+**网页版（在线可直接访问，无需部署）**
+
+- 地址：<https://caic70456-glitch.github.io/corn-doctor/>
+- 由 [docs/index.html](docs/index.html) 经 GitHub Pages 自动部署（main 分支 /docs 目录），单文件自包含、无外部依赖
+
+**微信小程序（miniprogram/，Taro 4.1.9 + React + TypeScript）**
+
+- 4 个 Tab：概览（核心指标 + 各类病害准确率）/ 技术（架构数据流 + 坐标系 + 关键技术 + 接口定义）/ 部署（命令可复制 + 参数表 + 误差对策）/ 关于（系统组成 + 扩展方向 + 相关链接）
+- 源码即全部内容，构建产物不入库。本地构建并导入微信开发者工具：
+
+```bash
+cd miniprogram
+npm install
+npm run dev:weapp     # 产出 dist/，微信开发者工具导入该目录即可预览（需自备 AppID）
+# 或发布构建: npm run build:weapp
+```
 
 ## 工作原理
 

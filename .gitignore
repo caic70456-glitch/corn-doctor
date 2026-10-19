@@ -5,3 +5,12 @@ build/
 log/
 *.egg-info/
 .venv/
+
+# 微信小程序（Taro）构建产物与本地配置
+miniprogram/node_modules/
+miniprogram/dist/
+miniprogram/.pai/
+miniprogram/.auth/
+miniprogram/package-lock.json
+miniprogram/yarn.lock
+miniprogram/pnpm-lock.yaml
