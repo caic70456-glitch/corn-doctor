@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玉米医生 · RealSense 三维定位方案 | AIC-2026-46559581</title>
+<meta name="description" content="AIC-2026-46559581 AI+农业赛道「玉米医生」项目：RealSense 深度相机玉米病叶三维定位方案（树莓派 ROS 2 Humble 边缘部署）">
+<style>
+:root{
+  --green:#2f9e44; --green-dark:#1e7a34; --green-light:#e6f4ea;
+  --gold:#f0a500; --gold-light:#fdf3dd;
+  --ink:#22302a; --ink-soft:#5a6b62; --line:#dce7e0;
+  --bg:#f6faf7; --card:#ffffff;
+  --radius:14px; --maxw:1080px;
+  --mono:"Cascadia Code","JetBrains Mono",Consolas,"Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Source Han Sans SC",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink); line-height:1.75; font-size:16px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+
+/* ---------- hero ---------- */
+.hero{
+  background:linear-gradient(150deg,#143d22 0%,#1e5c33 45%,#2f7a42 100%);
+  color:#fff; padding:64px 0 88px; position:relative; overflow:hidden;
+}
+.hero::after{
+  content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;
+  background:radial-gradient(circle,rgba(240,165,0,.28),transparent 65%);
+}
+.hero::before{
+  content:"";position:absolute;left:-80px;bottom:-160px;width:340px;height:340px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.10),transparent 65%);
+}
+.hero .wrap{position:relative;z-index:1}
+.tagline{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+  border-radius:999px;padding:4px 16px;font-size:13px;letter-spacing:1px;margin-bottom:18px}
+.hero h1{font-size:clamp(26px,4.5vw,42px);font-weight:800;letter-spacing:.5px;margin-bottom:14px}
+.hero p.sub{font-size:clamp(15px,2vw,18px);color:#d9ecdf;max-width:720px}
+.badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:8px;
+  padding:5px 14px;font-size:13px;color:#eaf5ee}
+.badge b{color:#ffd970;font-weight:600}
+.hero-metrics{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+.metric{background:rgba(255,255,255,.10);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.18);
+  border-radius:var(--radius);padding:14px 22px;min-width:150px}
+.metric .num{font-size:28px;font-weight:800;color:#ffd970;line-height:1.2}
+.metric .lbl{font-size:12.5px;color:#cfe6d6;margin-top:2px}
+
+/* ---------- nav ---------- */
+nav{
+  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+nav .wrap{display:flex;gap:2px;overflow-x:auto;padding:0 12px;scrollbar-width:none}
+nav .wrap::-webkit-scrollbar{display:none}
+nav a{
+  white-space:nowrap;padding:14px 13px;font-size:14px;color:var(--ink-soft);text-decoration:none;
+  border-bottom:3px solid transparent;transition:.2s;
+}
+nav a:hover{color:var(--green-dark);border-bottom-color:var(--green)}
+
+/* ---------- sections ---------- */
+main{padding:20px 0 60px}
+section{margin-top:52px}
+h2{
+  display:flex;align-items:center;gap:12px;font-size:clamp(20px,3vw,26px);font-weight:800;
+  margin-bottom:18px;color:var(--ink);
+}
+h2 .no{
+  flex:none;width:36px;height:36px;border-radius:10px;background:var(--green);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;
+}
+h3{font-size:17.5px;font-weight:700;color:var(--green-dark);margin:26px 0 10px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px 26px;box-shadow:0 2px 10px rgba(30,90,50,.05);
+}
+.card + .card{margin-top:16px}
+p{color:var(--ink);margin-bottom:10px}
+.muted{color:var(--ink-soft);font-size:14.5px}
+.quote{
+  background:var(--green-light);border-left:4px solid var(--green);border-radius:0 10px 10px 0;
+  padding:14px 18px;margin:14px 0;font-weight:600;color:var(--green-dark);
+}
+strong{color:var(--green-dark)}
+code{
+  font-family:var(--mono);background:#eef5f0;border:1px solid var(--line);border-radius:6px;
+  padding:1px 7px;font-size:.88em;color:#0f5c2e;
+}
+pre{
+  background:#132b1c;color:#d9ecd0;border-radius:12px;padding:18px 20px;overflow-x:auto;
+  font-family:var(--mono);font-size:13.5px;line-height:1.7;margin:12px 0;
+}
+pre code{background:none;border:none;padding:0;color:inherit}
+pre .c{color:#7fa88b}
+
+/* ---------- tables ---------- */
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:14.5px;overflow-wrap:anywhere}
+.tbl th{
+  background:var(--green);color:#fff;text-align:left;padding:10px 14px;font-weight:600;
+  border:1px solid #27843a;
+}
+.tbl td{padding:10px 14px;border:1px solid var(--line);background:#fff;vertical-align:top}
+.tbl tr:nth-child(even) td{background:#f4f9f5}
+.tbl-scroll{overflow-x:auto;border-radius:10px}
+.mini-tbl th{background:#fff;color:var(--green-dark);border-bottom:2px solid var(--green)}
+.mini-tbl td{text-align:center;font-weight:700;color:var(--ink)}
+
+/* ---------- callout ---------- */
+.callout{display:flex;gap:12px;border-radius:12px;padding:14px 18px;margin:14px 0;font-size:14.5px}
+.callout.warn{background:var(--gold-light);border:1px solid #f2d9a0;color:#7a5a10}
+.callout.info{background:#e8f1fb;border:1px solid #c9dcf2;color:#2a5578}
+
+/* ---------- svg diagram ---------- */
+.diagram-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:14px 0}
+.diagram-card svg{width:100%;height:auto;display:block}
+.fig-cap{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:8px}
+
+/* ---------- grid ---------- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+.step{display:flex;gap:14px;margin:12px 0}
+.step .n{
+  flex:none;width:30px;height:30px;border-radius:50%;background:var(--green-light);color:var(--green-dark);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;margin-top:2px;
+}
+
+/* ---------- footer ---------- */
+footer{background:#143d22;color:#bcd8c5;padding:34px 0;margin-top:70px;font-size:14px}
+footer a{color:#ffd970;text-decoration:none}
+footer a:hover{text-decoration:underline}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:640px){
+  .card{padding:18px}
+  .hero{padding:44px 0 64px}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="tagline">AIC-2026-46559581 · AI+农业赛道 · "玉米医生"</span>
+    <h1>RealSense 深度相机三维定位方案</h1>
+    <p class="sub">在树莓派边缘端接入 RealSense 深度相机，对玉米叶片完成病害识别的同时，输出目标叶片在相机坐标系下的三维坐标 (X, Y, Z)，经串口实时下发给下位单片机，引导云台 / 末端执行器对准病叶。</p>
+    <div class="badges">
+      <span class="badge">平台：<b>树莓派 4B/5</b></span>
+      <span class="badge">系统：<b>Ubuntu 22.04</b></span>
+      <span class="badge">框架：<b>ROS 2 Humble</b></span>
+      <span class="badge">相机：<b>Intel RealSense D415</b></span>
+      <span class="badge">模型：<b>MobileNetV2 (ONNX)</b></span>
+      <span class="badge">代码：<b>corn_ws/src/corn_detect</b></span>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric"><div class="num">90.2%</div><div class="lbl">测试集整体准确率</div></div>
+      <div class="metric"><div class="num">2 Hz</div><div class="lbl">推理 / 坐标发布频率</div></div>
+      <div class="metric"><div class="num">115200</div><div class="lbl">串口波特率 (8N1)</div></div>
+      <div class="metric"><div class="num">&lt;1%</div><div class="lbl">1m 内深度误差 (D415)</div></div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <a href="#s1">方案概述</a><a href="#s2">硬件选型</a><a href="#s3">系统架构</a><a href="#s4">坐标系</a>
+    <a href="#s5">关键技术</a><a href="#s6">输出接口</a><a href="#s7">参数配置</a><a href="#s8">部署步骤</a>
+    <a href="#s9">精度分析</a><a href="#s10">风险扩展</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- 1 -->
+<section id="s1">
+  <h2><span class="no">1</span>方案概述</h2>
+  <div class="card">
+    <p><strong>目标</strong>：在树莓派边缘端接入 RealSense 类深度相机，对玉米叶片完成病害识别的同时，输出目标叶片在相机坐标系下的<strong>三维坐标 (X, Y, Z)</strong>，经串口实时下发给下位单片机，用于引导云台 / 末端执行器对准病叶。</p>
+    <div class="callout info">
+      <span>💡</span><span><b>关键设计决策</b>：本项目病害数据集为<b>图片级标注</b>（每张图只有一个"生病/健康 + 病害类别"标签，无病斑包围框），因此不做病斑级检测框定位。</span>
+    </div>
+    <div class="quote">整图分类（判断生病 / 健康及病害种类） + 画面中心点深度反投影（求三维坐标）</div>
+    <p>使用时操作者手持相机（或云台）将病叶对准画面中心，系统即输出该点三维坐标。该方案与现有分类模型完全配套，接口简单、计算量小（树莓派可实时运行），且后续升级为检测框定位时<strong>下游接口完全不变</strong>（见第 10 节）。</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <h2><span class="no">2</span>硬件选型</h2>
+  <div class="card">
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <tr><th style="width:16%">部件</th><th style="width:30%">选型</th><th>说明</th></tr>
+      <tr>
+        <td>深度相机</td><td><strong>Intel RealSense D415</strong>（主选）</td>
+        <td>主动双目 + RGB，出厂标定内参；0.3–3 m 深度量程贴合"手持近景看叶"场景；官方 ROS 2 驱动 <code>realsense2_camera</code> 对 Humble 支持完善</td>
+      </tr>
+      <tr>
+        <td>兼容型号</td><td>D435 / D435i / D455 等</td>
+        <td>同一套代码直接可用，仅视场角 / 量程略有差异；其他品牌深度相机只要能发布"彩色图 + 对齐深度图 + 相机内参"标准话题，重映射话题即可接入</td>
+      </tr>
+      <tr>
+        <td>边缘计算</td><td>树莓派 4B/5（≥4 GB）</td>
+        <td>ONNX Runtime CPU 推理 MobileNetV2，单帧约 0.2–0.5 s，配合节流参数可流畅运行</td>
+      </tr>
+      <tr>
+        <td>下位机</td><td>STM32 等任意单片机</td>
+        <td>通过 UART 接收 ASCII 坐标行，无需特殊协议栈</td>
+      </tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <h2><span class="no">3</span>系统架构与数据流</h2>
+  <div class="diagram-card">
+    <svg viewBox="0 0 1060 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="系统架构数据流图">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2f9e44"/>
+        </marker>
+        <linearGradient id="gcam" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#e6f4ea"/><stop offset="1" stop-color="#d3ecda"/>
+        </linearGradient>
+        <linearGradient id="gnode" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1e5c33"/><stop offset="1" stop-color="#2f7a42"/>
+        </linearGradient>
+      </defs>
+      <style>
+        .box{fill:#fff;stroke:#dce7e0;rx:12}
+        .t{font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+        .bt{font-size:15px;font-weight:700;fill:#22302a}
+        .bs{font-size:11.5px;fill:#5a6b62}
+        .topic{font-size:11px;fill:#0f5c2e;font-family:Consolas,monospace}
+      </style>
+
+      <!-- A: camera -->
+      <rect x="14" y="150" width="150" height="96" rx="12" fill="url(#gcam)" stroke="#8fc9a1"/>
+      <text x="89" y="186" text-anchor="middle" class="t bt">RealSense D415</text>
+      <text x="89" y="208" text-anchor="middle" class="t bs">RGB + 深度</text>
+      <text x="89" y="226" text-anchor="middle" class="t bs">主动双目 · 0.3–3m</text>
+
+      <!-- B: driver -->
+      <rect x="216" y="150" width="160" height="96" rx="12" fill="url(#gnode)"/>
+      <text x="296" y="186" text-anchor="middle" class="t bt" fill="#fff">realsense2_camera</text>
+      <text x="296" y="207" text-anchor="middle" class="t bs" fill="#cfe6d6">官方 ROS2 驱动</text>
+      <text x="296" y="225" text-anchor="middle" class="t bs" fill="#ffd970">align_depth=true</text>
+
+      <line x1="164" y1="198" x2="212" y2="198" stroke="#2f9e44" stroke-width="2" marker-end="url(#arr)"/>
+
+      <!-- topics -->
+      <rect x="428" y="34" width="240" height="40" rx="8" fill="#eef5f0" stroke="#c7ddcf"/>
+      <text x="548" y="59" text-anchor="middle" class="topic">/color/image_raw　(彩色图)</text>
+      <rect x="428" y="178" width="240" height="40" rx="8" fill="#eef5f0" stroke="#c7ddcf"/>
+      <text x="548" y="196" text-anchor="middle" class="topic">/aligned_depth_to_color/…</text>
+      <text x="548" y="210" text-anchor="middle" class="topic">(对齐深度图 mono16)</text>
+      <rect x="428" y="322" width="240" height="40" rx="8" fill="#eef5f0" stroke="#c7ddcf"/>
+      <text x="548" y="340" text-anchor="middle" class="topic">/color/camera_info</text>
+      <text x="548" y="354" text-anchor="middle" class="topic">(内参 K 矩阵)</text>
+
+      <path d="M376,175 C400,150 404,54 424,54" fill="none" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+      <line x1="376" y1="198" x2="424" y2="198" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M376,221 C400,246 404,342 424,342" fill="none" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+
+      <!-- D: detect_node -->
+      <rect x="720" y="120" width="180" height="156" rx="12" fill="url(#gnode)"/>
+      <text x="810" y="152" text-anchor="middle" class="t bt" fill="#fff">detect_node</text>
+      <text x="810" y="180" text-anchor="middle" class="t bs" fill="#cfe6d6">① MobileNetV2 整图分类 (ONNX)</text>
+      <text x="810" y="203" text-anchor="middle" class="t bs" fill="#cfe6d6">② 中心点邻域深度采样</text>
+      <text x="810" y="226" text-anchor="middle" class="t bs" fill="#cfe6d6">③ 针孔模型反投影</text>
+      <text x="810" y="254" text-anchor="middle" class="t bs" fill="#ffd970">2 Hz 节流推理</text>
+
+      <path d="M668,54 C700,60 706,140 716,156" fill="none" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+      <line x1="668" y1="198" x2="716" y2="198" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M668,342 C700,336 706,256 716,240" fill="none" stroke="#8fc9a1" stroke-width="1.8" marker-end="url(#arr)"/>
+
+      <!-- E: /target_3d -->
+      <rect x="720" y="318" width="180" height="48" rx="8" fill="#fdf3dd" stroke="#eecf8f"/>
+      <text x="810" y="338" text-anchor="middle" class="topic" style="fill:#8a6510;font-weight:700">/target_3d (PointStamped)</text>
+      <text x="810" y="356" text-anchor="middle" class="topic" style="fill:#8a6510">X, Y, Z (米) · 2Hz</text>
+      <line x1="810" y1="276" x2="810" y2="314" stroke="#f0a500" stroke-width="2" marker-end="url(#arr)"/>
+
+      <!-- F: serial bridge -->
+      <rect x="946" y="150" width="100" height="96" rx="12" fill="#eef5f0" stroke="#c7ddcf"/>
+      <text x="996" y="182" text-anchor="middle" class="t bt" style="font-size:13px">serial_bridge</text>
+      <text x="996" y="200" text-anchor="middle" class="t bt" style="font-size:13px">_node</text>
+      <text x="996" y="222" text-anchor="middle" class="t bs">UART 115200</text>
+      <line x1="900" y1="198" x2="942" y2="198" stroke="#2f9e44" stroke-width="2" marker-end="url(#arr)"/>
+
+      <!-- G: MCU -->
+      <rect x="946" y="318" width="100" height="60" rx="12" fill="url(#gcam)" stroke="#8fc9a1"/>
+      <text x="996" y="342" text-anchor="middle" class="t bt" style="font-size:13px">下位单片机</text>
+      <text x="996" y="362" text-anchor="middle" class="t bs">云台 / 执行器</text>
+      <line x1="996" y1="246" x2="996" y2="314" stroke="#2f9e44" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="993" y="286" text-anchor="end" class="topic" style="fill:#8a6510">X:%.3f,Y:%.3f,Z:%.3f\r\n</text>
+    </svg>
+    <div class="fig-cap">图 1 · 系统架构与数据流（三个 ROS 节点职责单一、话题解耦，任意一级可独立替换调试）</div>
+  </div>
+  <p class="muted">驱动节点由官方包提供；<code>detect_node</code> 负责"识别 + 定位"；<code>serial_bridge_node</code> 负责"下发"。</p>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <h2><span class="no">4</span>坐标系定义</h2>
+  <div class="grid2">
+    <div class="card">
+      <p><code>/target_3d</code> 采用<strong>相机光学坐标系</strong>（RealSense <code>color</code> 光学帧约定，与 OpenCV 一致）：</p>
+      <div class="step"><div class="n">原</div><div>原点：彩色相机光心</div></div>
+      <div class="step"><div class="n">X</div><div>画面<strong>向右</strong></div></div>
+      <div class="step"><div class="n">Y</div><div>画面<strong>向下</strong></div></div>
+      <div class="step"><div class="n">Z</div><div>沿光轴<strong>向前</strong>（即目标距离）</div></div>
+      <p class="muted">单位：米；<code>PointStamped.header.frame_id</code> 写入驱动上报的 <code>camera_color_optical_frame</code>。</p>
+    </div>
+    <div class="diagram-card">
+      <svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="相机光学坐标系示意">
+        <defs>
+          <marker id="ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#22302a"/>
+          </marker>
+        </defs>
+        <style>
+          .lab{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;font-weight:700}
+          .slab{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:12px;fill:#5a6b62}
+        </style>
+        <!-- camera body -->
+        <rect x="40" y="110" width="86" height="64" rx="10" fill="#1e5c33"/>
+        <circle cx="104" cy="142" r="20" fill="#0f3d20" stroke="#ffd970" stroke-width="3"/>
+        <circle cx="104" cy="142" r="8" fill="#2f7a42"/>
+        <text x="83" y="196" class="slab">彩色相机光心 O</text>
+        <!-- X axis -->
+        <line x1="126" y1="142" x2="360" y2="142" stroke="#d64545" stroke-width="3" marker-end="url(#ax)"/>
+        <text x="365" y="147" class="lab" fill="#d64545">X 画面右</text>
+        <!-- Y axis -->
+        <line x1="126" y1="142" x2="126" y2="266" stroke="#2f9e44" stroke-width="3" marker-end="url(#ax)"/>
+        <text x="118" y="284" class="lab" fill="#2f9e44">Y 画面下</text>
+        <!-- Z axis -->
+        <line x1="126" y1="142" x2="300" y2="44" stroke="#3b7bd6" stroke-width="3" marker-end="url(#ax)"/>
+        <text x="306" y="40" class="lab" fill="#3b7bd6">Z 沿光轴向前（目标距离）</text>
+        <!-- target leaf -->
+        <ellipse cx="282" cy="86" rx="26" ry="12" fill="#7dbb61" transform="rotate(-24 282 86)"/>
+        <line x1="282" y1="86" x2="282" y2="228" stroke="#b9c9bf" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <line x1="282" y1="228" x2="360" y2="228" stroke="#b9c9bf" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <text x="300" y="248" class="slab">Z 即直线距离，可用于云台俯仰 / 偏航解算</text>
+      </svg>
+      <div class="fig-cap">图 2 · 相机光学坐标系（OpenCV 约定）</div>
+    </div>
+  </div>
+  <p class="muted">若需转换到云台 / 基座坐标系，只需在下位机或增加一个 <code>tf2</code> 静态变换节点做外参旋转平移。</p>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <h2><span class="no">5</span>关键技术环节</h2>
+
+  <div class="card">
+    <h3>5.1 深度—彩色对齐</h3>
+    <p>RealSense 深度镜头与彩色镜头视场、光轴不同，像素不重合。启动驱动时必须开启 <code>align_depth:=true</code>，将深度图配准到彩色光轴，得到 <code>/aligned_depth_to_color/image_raw</code>，保证"彩色图上看到的点 = 深度图上同位置的值"。launch 文件中已默认开启。</p>
+  </div>
+
+  <div class="card">
+    <h3>5.2 目标点选取：画面中心</h3>
+    <p>分类模型输出整图结论，无目标框，取<strong>画面正中心像素 (u, v) = (W/2, H/2)</strong> 作为病叶代表点。配合"对准即测"的使用方式，操作者将病叶置于画面中心（可在画面上叠加十字准星辅助，见第 10 节扩展）。</p>
+  </div>
+
+  <div class="card">
+    <h3>5.3 深度采样与无效值处理</h3>
+    <p>单个像素的深度值易受噪声影响。<code>detect_node</code> 采用<strong>邻域扩环采样</strong>（<code>_sample_depth</code>）：</p>
+    <div class="step"><div class="n">1</div><div>取中心 1×1 像素深度，若有效（&gt;0 且在量程内）直接使用；</div></div>
+    <div class="step"><div class="n">2</div><div>无效则逐级扩大窗口（3×3 → 5×5 → … → 半径 4，即 9×9）取<strong>最近的有效深度</strong>；</div></div>
+    <div class="step"><div class="n">3</div><div>整窗全无效（强反光、超量程、遮挡）则<strong>放弃本次发布并限频告警</strong>，避免把噪声坐标发给下位机。</div></div>
+    <p class="muted">深度原始值为 uint16 毫米（驱动默认），乘以 <code>depth_unit=0.001</code> 换算为米。</p>
+  </div>
+
+  <div class="card">
+    <h3>5.4 针孔模型反投影</h3>
+    <p>相机内参 (fx, fy, cx, cy) 从 <code>/color/camera_info</code> 的 K 矩阵实时读取（出厂标定，免手动标定）。对像素 (u, v) 与深度 Z：</p>
+<pre><code>X = (u − cx) · Z / fx
+Y = (v − cy) · Z / fy
+Z = Z</code></pre>
+    <p>得到的三维坐标封装为 <code>PointStamped</code> 发布到 <code>/target_3d</code>，时间戳沿用彩色帧时间戳。</p>
+  </div>
+
+  <div class="card">
+    <h3>5.5 病害识别（与训练端严格一致）</h3>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <tr><th style="width:22%">项目</th><th>配置</th></tr>
+      <tr><td>模型</td><td>MobileNetV2 迁移学习，ONNX 格式（包内 <code>data/best.onnx</code>，约 8.7 MB）</td></tr>
+      <tr><td>输入</td><td>224×224×3，RGB</td></tr>
+      <tr><td>预处理</td><td>Resize(224,224) → /255 → ImageNet 均值方差归一化 → NCHW</td></tr>
+      <tr><td>输出</td><td>4 类概率（ONNX 导出时已含 softmax）：Blight 叶斑病 / Common_Rust 普通锈病 / Gray_Leaf_Spot 灰斑病 / Healthy 健康</td></tr>
+      <tr><td>类别顺序</td><td>从 ONNX 模型元数据 <code>class_0..class_3</code> 自动读取，与训练端强一致</td></tr>
+      <tr><td>节流</td><td><code>infer_interval=0.5 s</code>，即 2 Hz 推理，降低树莓派 CPU 占用</td></tr>
+    </table>
+    </div>
+    <div class="callout warn">
+      <span>📌</span><span><b>识别与定位联动策略</b>：无论生病或健康，<code>/target_3d</code> 均持续发布，保证下位机数据流连续、便于联调；是否执行喷洒等动作由下位机结合自身逻辑决定。</span>
+    </div>
+    <div class="tbl-scroll">
+    <table class="tbl mini-tbl">
+      <tr><th>Blight 叶斑病</th><th>Common_Rust 普通锈病</th><th>Gray_Leaf_Spot 灰斑病</th><th>Healthy 健康</th></tr>
+      <tr><td>84.0%</td><td>95.4%</td><td>72.7%</td><td>99.1%</td></tr>
+    </table>
+    </div>
+    <p class="muted" style="text-align:center">PC 端测试集（1257 张）各类别准确率 · 整体 90.2%，识别结论可作为动作触发依据。</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <h2><span class="no">6</span>输出接口定义</h2>
+  <div class="card">
+    <h3>6.1 ROS 话题</h3>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <tr><th>话题</th><th>方向</th><th>类型</th><th>说明</th></tr>
+      <tr><td><code>/color/image_raw</code></td><td>订阅</td><td>sensor_msgs/Image</td><td>彩色图（launch 中经 <code>topic_prefix</code> 重映射到 <code>/camera/camera/...</code>）</td></tr>
+      <tr><td><code>/aligned_depth_to_color/image_raw</code></td><td>订阅</td><td>sensor_msgs/Image</td><td>对齐深度图，mono16</td></tr>
+      <tr><td><code>/color/camera_info</code></td><td>订阅</td><td>sensor_msgs/CameraInfo</td><td>彩色相机内参</td></tr>
+      <tr><td><code>/target_3d</code></td><td>发布</td><td>geometry_msgs/PointStamped</td><td>目标三维坐标（米，相机光学系），2 Hz</td></tr>
+    </table>
+    </div>
+    <h3>6.2 串口协议（对下位机）</h3>
+    <div class="step"><div class="n">1</div><div>物理层：UART，默认 <code>/dev/ttyUSB0</code>，波特率 <strong>115200</strong>，8N1</div></div>
+    <div class="step"><div class="n">2</div><div>每收到一帧坐标输出一行 ASCII 文本，<strong>换行符 <code>\r\n</code> 结尾</strong>，便于单片机逐行解析：</div></div>
+<pre><code>X:0.123,Y:-0.045,Z:0.876\r\n</code></pre>
+    <div class="step"><div class="n">3</div><div>单位为米；无效深度时不发送该帧（下位机可按"超时未收到即目标丢失"处理）</div></div>
+    <div class="step"><div class="n">4</div><div>单片机侧参考解析：以 <code>\n</code> 分帧 → 查找 <code>X:</code> <code>Y:</code> <code>Z:</code> 关键字 → <code>strtof</code> 提取三个浮点数</div></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <h2><span class="no">7</span>参数配置表</h2>
+  <div class="card">
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <tr><th>参数</th><th>默认值</th><th>位置</th><th>说明</th></tr>
+      <tr><td><code>model_path</code></td><td>包内 <code>data/best.onnx</code></td><td>detect_node</td><td>ONNX 模型路径</td></tr>
+      <tr><td><code>img_size</code></td><td>224</td><td>detect_node</td><td>模型输入边长</td></tr>
+      <tr><td><code>infer_interval</code></td><td>0.5 s</td><td>detect_node</td><td>推理节流间隔</td></tr>
+      <tr><td><code>depth_unit</code></td><td>0.001</td><td>detect_node</td><td>深度原始值 → 米换算（毫米制）</td></tr>
+      <tr><td><code>port</code></td><td>/dev/ttyUSB0</td><td>serial_bridge_node</td><td>串口设备</td></tr>
+      <tr><td><code>baudrate</code></td><td>115200</td><td>serial_bridge_node</td><td>串口波特率</td></tr>
+      <tr><td><code>topic_prefix</code></td><td>/camera/camera</td><td>launch</td><td>RealSense 驱动话题前缀（Humble 默认；老版本驱动为 <code>/camera</code> 时启动传 <code>topic_prefix:=/camera</code>）</td></tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <h2><span class="no">8</span>部署与运行步骤</h2>
+  <div class="card">
+<pre><code><span class="c"># 1) 安装依赖（树莓派 Ubuntu 22.04 + ROS 2 Humble）</span>
+sudo apt install ros-humble-realsense2-camera ros-humble-cv-bridge \
+                 python3-pip ros-humble-rviz2
+pip3 install onnxruntime pyserial numpy opencv-python-headless
+
+<span class="c"># 2) 编译工作空间</span>
+cd ~/corn_ws
+colcon build --symlink-install
+source install/setup.bash
+
+<span class="c"># 3) 串口权限（首次）</span>
+sudo usermod -aG dialout $USER <span class="c">&& 重新登录</span>
+
+<span class="c"># 4) 一键启动（驱动 + 识别 + 串口桥接）</span>
+ros2 launch corn_detect detect.launch.py
+<span class="c"># 指定串口: ros2 launch corn_detect detect.launch.py serial_port:=/dev/ttyACM0 serial_baud:=9600</span>
+
+<span class="c"># 5) 验证</span>
+ros2 topic echo /target_3d          <span class="c"># 应持续输出 X/Y/Z（米）</span>
+rviz2                                <span class="c"># 添加 PointStamped 显示可直观确认坐标</span></code></pre>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+  <h2><span class="no">9</span>精度分析与验证建议</h2>
+  <div class="card">
+    <p><strong>理论精度</strong>：D415 在 1 m 内深度误差 &lt;1%，2 m 约 2%；横向误差由内参决定（D415 彩色 fx≈1380 @1280×720，0.5 m 处 1 像素约 0.36 mm），实际主要误差来自手抖引起的瞄准偏移而非算法。</p>
+    <h3>误差来源与对策</h3>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <tr><th>误差源</th><th>影响</th><th>对策</th></tr>
+      <tr><td>手持抖动、瞄准偏移</td><td>坐标漂移</td><td>对准后稳 1 s 读数；上云台；画面叠加十字准星</td></tr>
+      <tr><td>叶面强反光 / 半透明</td><td>深度无效 / 跳变</td><td>已有邻域采样兜底；避免逆光；必要时侧 45° 照射</td></tr>
+      <tr><td>深度噪点</td><td>单帧跳变</td><td>下位机对连续 3 帧做中值 / 均值滤波</td></tr>
+      <tr><td>坐标系不匹配</td><td>下位机解算错位</td><td>统一用相机光学系 + 明确轴向定义（第 4 节）；需要时加外参变换</td></tr>
+    </table>
+    </div>
+    <div class="callout info">
+      <span>📏</span><span><b>建议实测流程</b>：在 0.5 / 1.0 / 1.5 m 三个距离用卷尺对照 <code>/target_3d</code> 的 Z 值，各测 10 次记录均值与标准差，验证精度满足云台瞄准需求。</span>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+  <h2><span class="no">10</span>风险与后续扩展</h2>
+  <div class="card">
+    <div class="step"><div class="n">1</div><div><strong>病斑级定位升级</strong>：若后续数据集补充包围框标注，将"画面中心点"替换为"检测框中心点"反投影即可，<code>/target_3d</code> 接口与串口协议完全不变，下位机零改动。</div></div>
+    <div class="step"><div class="n">2</div><div><strong>多目标</strong>：可扩展为对每个病斑发布一帧 <code>PointStamped</code>（加编号字段），按距离最近的优先下发。</div></div>
+    <div class="step"><div class="n">3</div><div><strong>硬件备选</strong>：D415 缺货时可用任意"彩色 + 对齐深度 + 内参"输出的深度相机（奥比中光等），仅话题前缀不同；极端情况下可用普通 USB 相机 + 固定工作距离假设（Z=常数）降级运行。</div></div>
+    <div class="step"><div class="n">4</div><div><strong>夜间 / 大棚弱光</strong>：D415 为主动双目，弱光下深度可用；彩色通道补光即可保证分类精度。</div></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <div style="color:#fff;font-weight:700;margin-bottom:4px">玉米医生 · AIC-2026-46559581</div>
+      <div>AI+农业赛道 · 玉米病害识别与三维定位系统</div>
+    </div>
+    <div style="text-align:right">
+      <div><a href="https://github.com/caic70456-glitch/corn-doctor">GitHub 仓库</a></div>
+      <div><a href="https://github.com/caic70456-glitch/corn-doctor/blob/main/AIC-2026-46559581-AI+农业-玉米医生-树莓派边缘部署/AIC-2026-46559581-AI+农业-玉米医生-RealSense%E4%B8%89%E7%BB%B4%E5%AE%9A%E4%BD%8D%E6%96%B9%E6%A1%88.md">方案 Markdown 原文</a></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
