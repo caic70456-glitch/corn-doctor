@@ -1,0 +1,18 @@
+{
+  "version": "5.3.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "corn_blight",
+      "points": [[0.0, 0.0], [3456.0, 5184.0]],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",
+      "flags": {}
+    }
+  ],
+  "imagePath": "../images/corn_blight_0613.jpg",
+  "imageData": null,
+  "imageHeight": 5184,
+  "imageWidth": 3456
+}

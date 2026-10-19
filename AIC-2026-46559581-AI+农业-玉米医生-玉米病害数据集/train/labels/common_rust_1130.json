@@ -1,0 +1,18 @@
+{
+  "version": "5.3.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "common_rust",
+      "points": [[0.0, 0.0], [1338.0, 357.0]],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",
+      "flags": {}
+    }
+  ],
+  "imagePath": "../images/common_rust_1130.jpg",
+  "imageData": null,
+  "imageHeight": 357,
+  "imageWidth": 1338
+}

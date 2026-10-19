@@ -1,0 +1,18 @@
+{
+  "version": "5.3.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "gray_leaf_spot",
+      "points": [[0.0, 0.0], [256.0, 256.0]],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",
+      "flags": {}
+    }
+  ],
+  "imagePath": "../images/gray_leaf_spot_0352.jpg",
+  "imageData": null,
+  "imageHeight": 256,
+  "imageWidth": 256
+}
