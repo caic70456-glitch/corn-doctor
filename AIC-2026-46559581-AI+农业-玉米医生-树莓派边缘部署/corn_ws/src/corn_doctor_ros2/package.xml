@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>corn_doctor_ros2</name>
+  <version>1.0.0</version>
+  <description>玉米医生：ROS2 Humble 相机采集 + ONNX 玉米病害识别（MobileNetV2 分类模型）</description>
+  <maintainer email="13391151013@163.com">AIC-2026-46559581</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

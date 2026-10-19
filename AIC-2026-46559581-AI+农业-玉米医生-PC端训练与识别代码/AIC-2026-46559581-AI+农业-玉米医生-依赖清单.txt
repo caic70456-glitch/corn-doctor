@@ -1,0 +1,11 @@
+torch>=2.0
+torchvision
+flask
+matplotlib
+scikit-learn
+pillow
+numpy
+onnx
+onnxscript
+onnxruntime
+opencv-python

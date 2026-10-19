@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玉米病虫害智能识别系统</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 50%, #dcedc8 100%);
+    min-height: 100vh; color: #2e3b2e;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 30px; color: #1b5e20; letter-spacing: 2px; }
+  header p { margin-top: 8px; color: #557; font-size: 15px; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 28px;
+    box-shadow: 0 8px 30px rgba(27,94,32,.12); margin-bottom: 24px;
+  }
+  .upload-zone {
+    border: 2px dashed #81c784; border-radius: 14px; background: #f9fdf9;
+    padding: 44px 20px; text-align: center; cursor: pointer;
+    transition: all .25s;
+  }
+  .upload-zone:hover, .upload-zone.drag { background: #e8f5e9; border-color: #43a047; }
+  .upload-zone .icon { font-size: 52px; }
+  .upload-zone .main { font-size: 18px; margin-top: 10px; color: #2e7d32; font-weight: bold; }
+  .upload-zone .sub { font-size: 13px; color: #888; margin-top: 6px; }
+  #fileInput { display: none; }
+  .preview-row { display: none; gap: 24px; align-items: flex-start; margin-top: 4px; }
+  .preview-row.show { display: flex; flex-wrap: wrap; }
+  .preview-box { flex: 0 0 300px; text-align: center; }
+  .preview-box img {
+    max-width: 300px; max-height: 300px; border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  }
+  .result-box { flex: 1; min-width: 300px; }
+  .badge {
+    display: inline-block; padding: 8px 18px; border-radius: 999px;
+    font-size: 20px; font-weight: bold; color: #fff; margin-bottom: 6px;
+  }
+  .badge.disease { background: #e53935; }
+  .badge.healthy { background: #43a047; }
+  .conf { font-size: 15px; color: #555; margin-bottom: 18px; }
+  .prob-row { margin-bottom: 10px; }
+  .prob-label { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 4px; }
+  .bar-bg { background: #eef3ee; border-radius: 999px; height: 12px; overflow: hidden; }
+  .bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#66bb6a,#43a047); transition: width .6s ease; }
+  .bar.top { background: linear-gradient(90deg,#ef5350,#e53935); }
+  .loading { text-align: center; padding: 30px; display: none; }
+  .spinner {
+    width: 44px; height: 44px; border: 5px solid #c8e6c9; border-top-color: #2e7d32;
+    border-radius: 50%; margin: 0 auto 12px; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { display: none; color: #c62828; background: #ffebee; padding: 12px 16px; border-radius: 10px; margin-top: 16px; }
+  .tips { font-size: 13px; color: #667; line-height: 1.8; }
+  .tips b { color: #2e7d32; }
+  .btn {
+    display: inline-block; margin-top: 16px; padding: 9px 22px; border: none;
+    background: #2e7d32; color: #fff; border-radius: 8px; font-size: 14px; cursor: pointer;
+  }
+  .btn:hover { background: #1b5e20; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🌽 玉米病虫害智能识别系统</h1>
+    <p>上传玉米叶片照片，自动识别有无病虫害及病害种类（叶斑病 / 普通锈病 / 灰斑病 / 健康）</p>
+  </header>
+
+  <div class="card">
+    <div class="upload-zone" id="dropZone">
+      <div class="icon">🖼️</div>
+      <div class="main">点击选择图片 或 将图片拖拽到此处</div>
+      <div class="sub">支持 JPG / PNG / WebP，大小不超过 16MB</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>AI 模型识别中，请稍候…</div>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="preview-row" id="previewRow">
+      <div class="preview-box">
+        <img id="previewImg" alt="预览图">
+        <button class="btn" id="reUpload">🔄 换一张图片</button>
+      </div>
+      <div class="result-box" id="resultBox"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tips">
+      <b>识别类别说明：</b><br>
+      · <b>叶斑病 (Blight)</b>：叶片出现梭形/长条形黄褐色病斑，中心灰白，边缘深褐<br>
+      · <b>普通锈病 (Common Rust)</b>：叶片正反面出现圆形至椭圆形的肉桂色至红褐色锈斑（夏孢子堆）<br>
+      · <b>灰斑病 (Gray Leaf Spot)</b>：叶片出现灰褐色矩形/长条形病斑，与叶脉平行，边缘清晰<br>
+      · <b>健康 (Healthy)</b>：叶片绿色均匀，无病斑、锈斑或枯黄区域<br><br>
+      <b>提示：</b>拍摄时尽量让叶片病斑区域占满画面、光线均匀，识别更准确。本系统结果仅供辅助参考，重大决策请咨询植保专家。
+    </div>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const previewRow = document.getElementById('previewRow');
+const previewImg = document.getElementById('previewImg');
+const resultBox = document.getElementById('resultBox');
+const loading = document.getElementById('loading');
+const errorBox = document.getElementById('error');
+
+dropZone.addEventListener('click', () => fileInput.click());
+document.getElementById('reUpload').addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function showError(msg) {
+  errorBox.textContent = msg; errorBox.style.display = 'block';
+  loading.style.display = 'none';
+}
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) { showError('请上传图片文件（JPG/PNG 等）'); return; }
+  if (file.size > 16 * 1024 * 1024) { showError('图片超过 16MB，请压缩后重试'); return; }
+  errorBox.style.display = 'none';
+  resultBox.innerHTML = '';
+  previewImg.src = URL.createObjectURL(file);
+  previewRow.classList.add('show');
+  loading.style.display = 'block';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch('/predict', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      loading.style.display = 'none';
+      if (d.error) { showError(d.error); return; }
+      renderResult(d);
+    })
+    .catch(() => showError('网络错误，请确认服务已启动后重试'));
+}
+
+function renderResult(d) {
+  const badge = d.has_disease
+    ? '<span class="badge disease">⚠ 检出病虫害</span>'
+    : '<span class="badge healthy">✔ 未检出病虫害（健康）</span>';
+  const rows = d.probs.map((p, i) => `
+    <div class="prob-row">
+      <div class="prob-label"><span>${i === 0 ? '🏆 ' : ''}${p.class_cn}</span><span>${p.prob.toFixed(2)}%</span></div>
+      <div class="bar-bg"><div class="bar ${i === 0 ? 'top' : ''}" style="width:${p.prob}%"></div></div>
+    </div>`).join('');
+  resultBox.innerHTML = `
+    ${badge}
+    <div class="conf">识别结果：<b>${d.class_cn}</b>，置信度 <b>${d.confidence}%</b>
+    （健康概率 ${d.healthy_prob}%）</div>
+    ${rows}`;
+}
+</script>
+</body>
+</html>

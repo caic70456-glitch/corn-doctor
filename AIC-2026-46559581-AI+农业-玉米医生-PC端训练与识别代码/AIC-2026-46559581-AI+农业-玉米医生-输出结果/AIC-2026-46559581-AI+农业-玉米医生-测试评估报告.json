@@ -1,0 +1,38 @@
+{
+  "model_path": "D:\\项目\\AIC-2026-46559581-AI+农业-玉米医生-代码\\AIC-2026-46559581-AI+农业-玉米医生-PC端训练与识别代码\\AIC-2026-46559581-AI+农业-玉米医生-输出结果\\AIC-2026-46559581-AI+农业-玉米医生-最终模型\\AIC-2026-46559581-AI+农业-玉米医生-最终模型最优权重.pth",
+  "test_accuracy": 0.9021479713603818,
+  "per_class_accuracy": {
+    "Blight": 84.01162790697676,
+    "Common_Rust": 95.40816326530613,
+    "Gray_Leaf_Spot": 72.67441860465115,
+    "Healthy": 99.14040114613181
+  },
+  "classification_report": "                precision    recall  f1-score   support\n\n        Blight     0.8281    0.8401    0.8341       344\n   Common_Rust     0.9212    0.9541    0.9373       392\nGray_Leaf_Spot     0.8065    0.7267    0.7645       172\n       Healthy     0.9971    0.9914    0.9943       349\n\n      accuracy                         0.9021      1257\n     macro avg     0.8882    0.8781    0.8825      1257\n  weighted avg     0.9011    0.9021    0.9012      1257\n",
+  "confusion_matrix": [
+    [
+      289,
+      25,
+      30,
+      0
+    ],
+    [
+      17,
+      374,
+      0,
+      1
+    ],
+    [
+      40,
+      7,
+      125,
+      0
+    ],
+    [
+      3,
+      0,
+      0,
+      346
+    ]
+  ],
+  "test_size": 1257
+}
