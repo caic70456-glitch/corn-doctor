@@ -1,69 +1,144 @@
-import React from 'react';
-import { View, Text } from '@tarojs/components';
-import SectionCard from '@/components/SectionCard';
-import MetricCard from '@/components/MetricCard';
-import { heroMetrics, classAccuracies } from '@/data/metrics';
+import React, { useState } from 'react';
+import { View, Text, Image, Button } from '@tarojs/components';
+import Taro from '@tarojs/taro';
+import { predictImage, PredictResult } from '@/services/predict';
+import { getDiseaseInfo } from '@/data/diseases';
 import styles from './index.module.scss';
 
-/** 概览首页：项目信息 + 核心指标 + 病害准确率 + 方案要点 */
-const HomePage: React.FC = () => {
+type Status = 'idle' | 'loading' | 'success' | 'error';
+
+const RecognizePage: React.FC = () => {
+  const [imgPath, setImgPath] = useState<string>('');
+  const [status, setStatus] = useState<Status>('idle');
+  const [result, setResult] = useState<PredictResult | null>(null);
+  const [errMsg, setErrMsg] = useState<string>('');
+
+  const handleChoose = (source: 'camera' | 'album') => {
+    setResult(null);
+    setErrMsg('');
+    Taro.chooseImage({
+      count: 1,
+      sourceType: [source],
+      sizeType: ['compressed'],
+      success: (res) => {
+        const path = res.tempFilePaths[0];
+        setImgPath(path);
+        setStatus('loading');
+        predictImage(path)
+          .then((r) => {
+            setResult(r);
+            setStatus('success');
+          })
+          .catch((e) => {
+            setErrMsg(e.message);
+            setStatus('error');
+          });
+      },
+      fail: () => {
+        setStatus('idle');
+      }
+    });
+  };
+
+  const info = result ? getDiseaseInfo(result.class) : null;
+
   return (
     <View className={styles.page}>
-      {/* Hero */}
-      <View className={styles.hero}>
-        <Text className={styles.tagline}>AIC-2026-46559581 · AI+农业赛道</Text>
-        <View>
-          <Text className={styles.heroTitle}>玉米医生 · RealSense 三维定位方案</Text>
-        </View>
-        <Text className={styles.heroSub}>
-          树莓派 4B/5 · Ubuntu 22.04 · ROS 2 Humble · Intel RealSense D415 · MobileNetV2 (ONNX)
-        </Text>
-      </View>
-
-      {/* 核心指标 */}
-      <View className={styles.metricGrid}>
-        {heroMetrics.map((m) => (
-          <View key={m.label} className={styles.metricCell}>
-            <MetricCard value={m.value} label={m.label} />
+      {/* 图片预览区 */}
+      <View className={styles.previewBox}>
+        {imgPath ? (
+          <Image className={styles.previewImg} src={imgPath} mode="aspectFill" />
+        ) : (
+          <View className={styles.placeholder}>
+            <Text className={styles.placeholderIcon}>🌽</Text>
+            <Text className={styles.placeholderText}>拍照或选择玉米叶片图片</Text>
+            <Text className={styles.placeholderHint}>支持叶斑病 / 普通锈病 / 灰斑病 / 健康 4 类识别</Text>
           </View>
-        ))}
+        )}
+
+        {status === 'loading' && (
+          <View className={styles.loadingMask}>
+            <View className={styles.spinner} />
+            <Text className={styles.loadingText}>AI 识别中…</Text>
+          </View>
+        )}
       </View>
 
-      {/* 方案概述 */}
-      <SectionCard title="方案概述">
-        <Text className={styles.introText}>
-          在树莓派边缘端接入 RealSense 深度相机，对玉米叶片完成病害识别的同时，输出目标叶片在相机坐标系下的三维坐标
-          (X, Y, Z)，经串口实时下发给下位单片机，引导云台 / 末端执行器对准病叶。
-        </Text>
-        <View className={styles.keyPoint}>
-          整图分类（生病/健康 + 病害种类） + 画面中心点深度反投影（三维坐标）
-        </View>
-        <Text className={styles.introText}>
-          操作者将病叶对准画面中心，系统即输出该点三维坐标；方案与分类模型完全配套，计算量小，可实时运行。
-        </Text>
-      </SectionCard>
+      {/* 操作按钮 */}
+      <View className={styles.btnRow}>
+        <Button className={styles.btnPrimary} onClick={() => handleChoose('camera')}>拍照识别</Button>
+        <Button className={styles.btnGhost} onClick={() => handleChoose('album')}>相册选择</Button>
+      </View>
 
-      {/* 测试集准确率 */}
-      <SectionCard title="测试集准确率（1257 张）">
-        {classAccuracies.map((c) => (
-          <View key={c.en} className={styles.barRow}>
-            <View className={styles.barTop}>
-              <View>
-                <Text className={styles.barName}>{c.name}</Text>
-                <Text className={styles.barEn}>{c.en}</Text>
+      {/* 错误提示 */}
+      {status === 'error' && (
+        <View className={styles.errorBox}>
+          <Text className={styles.errorText}>识别失败：{errMsg}</Text>
+        </View>
+      )}
+
+      {/* 空状态下的拍摄建议 */}
+      {status === 'idle' && (
+        <View className={styles.tipCard}>
+          <Text className={styles.tipTitle}>拍摄建议</Text>
+          <View className={styles.tipRow}>
+            <Text className={styles.tipDot}>1</Text>
+            <Text className={styles.tipText}>让叶片占满画面，只拍一片叶子效果最好</Text>
+          </View>
+          <View className={styles.tipRow}>
+            <Text className={styles.tipDot}>2</Text>
+            <Text className={styles.tipText}>在自然光下拍摄，避免逆光和阴影遮挡</Text>
+          </View>
+          <View className={styles.tipRow}>
+            <Text className={styles.tipDot}>3</Text>
+            <Text className={styles.tipText}>尽量拍清病斑、锈斑等细节，避免模糊</Text>
+          </View>
+        </View>
+      )}
+
+      {/* 识别结果 */}
+      {status === 'success' && result && info && (
+        <View className={styles.resultCard}>
+          {/* 结论头 */}
+          <View className={`${styles.resultHead} ${info.isHealthy ? styles.headHealthy : styles.headSick}`}>
+            <Text className={styles.resultLabel}>{info.isHealthy ? '✅ 叶片健康' : '⚠️ 检测到病害'}</Text>
+            <Text className={styles.resultName}>{result.class_cn}</Text>
+            <Text className={styles.resultConf}>置信度 {result.confidence}%</Text>
+          </View>
+
+          {/* 各类别概率 */}
+          <View className={styles.probs}>
+            <Text className={styles.probsTitle}>各类别概率</Text>
+            {result.probs.map((p) => (
+              <View key={p.class} className={styles.probRow}>
+                <View className={styles.probName}>
+                  <Text className={styles.probCn}>{p.class_cn}</Text>
+                  <Text className={styles.probEn}>{p.class}</Text>
+                </View>
+                <View className={styles.probBarBg}>
+                  <View
+                    className={p.class === result.class ? styles.probBarTop : styles.probBar}
+                    style={{ width: `${p.prob}%` }}
+                  />
+                </View>
+                <Text className={styles.probVal}>{p.prob.toFixed(1)}%</Text>
               </View>
-              <Text className={styles.barVal}>{c.acc.toFixed(1)}%</Text>
-            </View>
-            <View className={styles.barBg}>
-              <View className={styles.barFill} style={{ width: `${c.acc}%` }} />
-            </View>
+            ))}
           </View>
-        ))}
-      </SectionCard>
 
-      <Text className={styles.footTip}>技术架构 → 「技术」Tab · 上手部署 → 「部署」Tab</Text>
+          {/* 症状与防治 */}
+          <View className={styles.detailBlock}>
+            <Text className={styles.detailTitle}>症状特征</Text>
+            <Text className={styles.detailText}>{info.symptom}</Text>
+          </View>
+          <View className={styles.detailBlock}>
+            <Text className={styles.detailTitle}>防治建议</Text>
+            <Text className={styles.detailText}>{info.treatment}</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
 
-export default HomePage;
+export default RecognizePage;

@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '技术方案'
+  navigationBarTitleText: '病害知识'
 })

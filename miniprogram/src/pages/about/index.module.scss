@@ -6,7 +6,6 @@
   padding: $spacing-lg $page-padding $spacing-xl;
 }
 
-// ---- 项目信息 ----
 .infoCard {
   background: linear-gradient(150deg, #143d22 0%, #1e5c33 55%, #2f7a42 100%);
   border-radius: $radius-xl;
@@ -19,7 +18,6 @@
 .infoName {
   font-size: $font-size-xxl;
   font-weight: $font-weight-bold;
-  line-height: $line-height-tight;
 }
 
 .infoId {
@@ -41,103 +39,83 @@
   line-height: $line-height-loose;
 }
 
-// ---- 系统组成 ----
-.moduleItem {
-  display: flex;
-  margin-bottom: $spacing-lg;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
 }
 
-.moduleIcon {
-  flex: none;
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: $radius-sm;
+.cardTitle {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.cardText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-loose;
+  margin-bottom: $spacing-sm;
+}
+
+.highlight {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  color: $color-primary-dark;
   background: $color-green-light;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: $font-size-lg;
-  margin-right: $spacing-md;
-}
-
-.moduleName {
-  font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  margin-bottom: $spacing-xs;
-}
-
-.moduleDesc {
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  line-height: $line-height-loose;
-}
-
-// ---- 风险扩展 ----
-.riskItem {
-  margin-bottom: $spacing-lg;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.riskHead {
-  display: flex;
-  align-items: center;
-  margin-bottom: $spacing-xs;
-}
-
-.riskNo {
-  flex: none;
-  min-width: 56rpx;
-  height: 40rpx;
-  background: $color-gold-light;
-  color: #8a6510;
+  padding: 0 8rpx;
   border-radius: $radius-xs;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: $spacing-sm;
 }
 
-.riskTitle {
-  font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
+.kvRow {
+  display: flex;
+  padding: $spacing-xs 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child { border-bottom: none; }
+}
+
+.k {
+  width: 160rpx;
+  flex: none;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.v {
+  flex: 1;
+  font-size: $font-size-sm;
   color: $color-text-primary;
 }
 
-.riskDesc {
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  line-height: $line-height-loose;
+.codeBox {
+  background: #132b1c;
+  border-radius: $radius-sm;
+  padding: $spacing-md;
+  margin: $spacing-sm 0;
 }
 
-// ---- 链接 ----
+.code {
+  display: block;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: $font-size-xs;
+  color: #d9ecd0;
+  line-height: 1.8;
+}
+
 .linkBtn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: $spacing-md;
   background: $color-bg-hover;
   border-radius: $radius-md;
   margin-bottom: $spacing-sm;
-  transition: all $transition-base;
 
-  &:active {
-    opacity: 0.85;
-    transform: scale(0.98);
-  }
-
-  &:last-child {
-    margin-bottom: 0;
-  }
+  &:active { opacity: 0.85; transform: scale(0.98); }
+  &:last-child { margin-bottom: 0; }
 }
 
 .linkName {

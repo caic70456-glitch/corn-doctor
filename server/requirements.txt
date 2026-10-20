@@ -1,0 +1,4 @@
+flask>=2.0
+pillow>=9.0
+numpy>=1.21
+onnxruntime>=1.14

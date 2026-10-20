@@ -9,6 +9,7 @@ log/
 # 微信小程序（Taro）构建产物与本地配置
 miniprogram/node_modules/
 miniprogram/dist/
+miniprogram/.swc/
 miniprogram/.pai/
 miniprogram/.auth/
 miniprogram/package-lock.json

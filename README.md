@@ -31,7 +31,8 @@
         ├── corn_detect/       # RealSense 深度相机: 病害识别 + 三维坐标输出 + 串口下发
         └── corn_doctor_ros2/  # USB 相机手持机: 采集 + 识别 + 结论发布
 ├── docs/                                # 三维定位方案网页版（GitHub Pages 自 docs/ 部署）
-└── miniprogram/                         # 三维定位方案微信小程序（Taro 4.1.9 + React + TypeScript）
+├── server/                              # 小程序识别后端（Flask + ONNX Runtime，POST /predict）
+└── miniprogram/                         # 玉米病害识别微信小程序（Taro 4.1.9 + React + TypeScript）
 ```
 
 ## 快速开始
@@ -61,19 +62,24 @@ ros2 launch corn_detect detect.launch.py
 
 详细说明：[RealSense三维定位方案](AIC-2026-46559581-AI+农业-玉米医生-树莓派边缘部署/AIC-2026-46559581-AI+农业-玉米医生-RealSense三维定位方案.md) · [USB相机实物部署说明](AIC-2026-46559581-AI+农业-玉米医生-树莓派边缘部署/AIC-2026-46559581-AI+农业-玉米医生-USB相机实物部署说明.md)
 
-## 方案展示（网页 / 微信小程序）
+## 小程序识别（移动端）
 
-三维定位方案除 Markdown 文档外，还提供两种移动友好的展示形态：
+通过微信小程序拍照 / 选图，上传至本地识别后端实时推理，返回病害类别、置信度及防治建议。
 
-**网页版（在线可直接访问，无需部署）**
+**后端服务（server/api.py，Flask + ONNX Runtime）**
 
-- 地址：<https://caic70456-glitch.github.io/corn-doctor/>
-- 由 [docs/index.html](docs/index.html) 经 GitHub Pages 自动部署（main 分支 /docs 目录），单文件自包含、无外部依赖
+```bash
+pip install flask pillow numpy onnxruntime
+python server/api.py
+# 监听 0.0.0.0:5000
+# 接口：POST /predict（multipart/form-data，字段 file=图片）  GET /health
+```
 
 **微信小程序（miniprogram/，Taro 4.1.9 + React + TypeScript）**
 
-- 4 个 Tab：概览（核心指标 + 各类病害准确率）/ 技术（架构数据流 + 坐标系 + 关键技术 + 接口定义）/ 部署（命令可复制 + 参数表 + 误差对策）/ 关于（系统组成 + 扩展方向 + 相关链接）
-- 源码即全部内容，构建产物不入库。本地构建并导入微信开发者工具：
+- 3 个 Tab：**识别**（拍照/选图 → 上传后端 → 展示病害名、置信度、4 类概率条、症状与防治）/ **病害知识**（4 类症状与防治建议）/ **关于**（模型信息 + 后端配置 + 相关链接）
+- API 地址：编辑 `miniprogram/src/services/predict.ts` 中的 `API_BASE`，真机调试时改为运行后端的电脑局域网 IP（如 `http://192.168.1.10:5000`）
+- 微信开发者工具需在"详情 → 本地设置"勾选"不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书"
 
 ```bash
 cd miniprogram
@@ -81,6 +87,11 @@ npm install
 npm run dev:weapp     # 产出 dist/，微信开发者工具导入该目录即可预览（需自备 AppID）
 # 或发布构建: npm run build:weapp
 ```
+
+**方案网页版（在线可直接访问，无需部署）**
+
+- 地址：<https://caic70456-glitch.github.io/corn-doctor/>
+- 由 [docs/index.html](docs/index.html) 经 GitHub Pages 自动部署
 
 ## 工作原理
 
