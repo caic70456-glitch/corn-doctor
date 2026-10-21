@@ -10,14 +10,26 @@
 依赖: flask, pillow, numpy, onnxruntime
 """
 import io
+import logging
 import os
 
 import numpy as np
 from flask import Flask, jsonify, request
 from PIL import Image
 
-# ---------- 路径与常量 ----------
+# ---------- 日志（后台自启运行时输出到 server/backend.log） ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../server
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(BASE_DIR, "backend.log"), encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger("corn-doctor")
+
+# ---------- 路径与常量 ----------
 PROJECT_ROOT = os.path.dirname(BASE_DIR)                # 项目根
 
 # ONNX 模型（与 PC 端 06 脚本导出的一致）
@@ -96,8 +108,7 @@ def predict():
                       for c, p in ranked],
         })
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("识别失败")
         return jsonify({"error": f"识别失败: {e}"}), 500
 
 
@@ -111,7 +122,7 @@ def _load_session():
     s = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
     # 预热
     s.run(None, {"images": np.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=np.float32)})
-    print(f"[模型加载完成] {MODEL_PATH}")
+    logger.info("模型加载完成: %s", MODEL_PATH)
     return s
 
 
@@ -120,4 +131,5 @@ sess = _load_session()
 
 if __name__ == "__main__":
     # 监听 0.0.0.0，同一局域网内的手机可直接访问
+    logger.info("识别服务启动: http://0.0.0.0:5000")
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

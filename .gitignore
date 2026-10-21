@@ -5,6 +5,7 @@ build/
 log/
 *.egg-info/
 .venv/
+server/backend.log
 
 # 微信小程序（Taro）构建产物与本地配置
 miniprogram/node_modules/
