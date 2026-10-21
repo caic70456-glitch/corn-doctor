@@ -1,0 +1,18 @@
+{
+  "description": "玉米医生 - 拍照识别玉米病虫害",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "corn-doctor",
+  "libVersion": "3.0.0"
+}

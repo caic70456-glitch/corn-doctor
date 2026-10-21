@@ -1,0 +1,70 @@
+<!--pages/index/index.wxml-->
+<view class="page">
+  <view class="header">
+    <text class="logo">🌽</text>
+    <text class="title">玉米医生</text>
+    <text class="sub">AI 拍照识别玉米病虫害</text>
+  </view>
+
+  <!-- 相机取景 -->
+  <view class="card">
+    <camera wx:if="{{cameraMode}}" device-position="back" flash="off"
+            binderror="cameraError" class="camera">
+      <view class="guide">请将叶片对准取景框中央</view>
+    </camera>
+
+    <image wx:elif="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="preview" />
+
+    <view wx:else class="placeholder">
+      <text class="ph-icon">📷</text>
+      <text class="ph-text">拍照或上传玉米叶片照片\nAI 帮你诊断病害</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="btns" wx:if="{{cameraMode}}">
+    <button class="btn primary" bindtap="takePhoto">📸 拍摄并识别</button>
+    <button class="btn ghost" bindtap="closeCamera">取消</button>
+  </view>
+  <view class="btns" wx:else>
+    <button class="btn primary" bindtap="openCamera">📷 打开相机</button>
+    <button class="btn ghost" bindtap="chooseFromAlbum">🖼 相册 / 拍摄</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">
+    <view class="spinner"></view>
+    <text>AI 识别中…</text>
+  </view>
+
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+
+  <!-- 识别结果 -->
+  <view class="card result" wx:if="{{result}}">
+    <view class="verdict">
+      <text class="tag {{result.has_disease ? 'sick' : 'healthy'}}">
+        {{result.has_disease ? '⚠️ 发现病害' : '✅ 健康'}}
+      </text>
+      <view class="cls">{{result.class_cn}}</view>
+      <view class="conf">置信度 {{result.confidence}}%</view>
+    </view>
+
+    <view class="bars">
+      <view class="bar-row {{index === 0 ? 'top' : ''}}"
+            wx:for="{{result.probs}}" wx:key="class">
+        <view class="bar-head">
+          <text>{{item.class_cn}}</text>
+          <text>{{item.prob}}%</text>
+        </view>
+        <view class="bar-track">
+          <view class="bar-fill" style="width: {{item.prob}}%"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="advice"><text>防治建议：{{result.advice}}</text></view>
+
+    <button class="btn ghost again" bindtap="retake">换一张图片</button>
+  </view>
+
+  <view class="footer">玉米医生 · AIC-2026-46559581 · 仅作辅助诊断参考</view>
+</view>
