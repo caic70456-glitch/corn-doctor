@@ -180,10 +180,14 @@ const ADVICE = {
   Healthy: "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。"
 };
 
-/* onnxruntime-web 镜像：国内 npmmirror 优先，jsdelivr 兜底 */
+/* onnxruntime-web 镜像。注意：JS 用 <script> 加载不需要 CORS，
+   但 ort 内部用 fetch 拉取 wasm 二进制必须带 access-control-allow-origin 头 ——
+   npmmirror 的 wasm 文件没有该头，故 wasm 源选 jsdelivr / unpkg，npmmirror 只作 JS 源 */
 const ORT_MIRRORS = [
-  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js", dist: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/" },
-  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js", dist: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/" }
+  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js",
+    wasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/" },
+  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js",
+    wasm: "https://unpkg.com/onnxruntime-web@1.17.3/dist/" }
 ];
 
 let ortReady = false, session = null;
@@ -195,6 +199,16 @@ function showError(msg) {
   b.textContent = msg; b.style.display = "block";
 }
 function clearError() { el("errorBox").style.display = "none"; }
+
+/* ---------- 错误格式化（ort/浏览器可能抛出非 Error 对象） ---------- */
+function fmtErr(e) {
+  console.error("[玉米医生] 识别异常：", e);
+  if (e === null || e === undefined) return "未知错误";
+  if (typeof e === "string") return e;
+  if (e.message) return e.message;
+  try { const s = JSON.stringify(e); if (s && s !== "{}" && s !== "[]") return s; } catch (_) {}
+  try { return String(e); } catch (_) { return "未知错误对象"; }
+}
 
 /* ---------- 加载推理引擎 ---------- */
 function loadScript(src) {
@@ -213,15 +227,17 @@ async function ensureOrt() {
   for (const m of ORT_MIRRORS) {
     try {
       await loadScript(m.js);
-      if (window.ort) {
-        ort.env.wasm.wasmPaths = m.dist;
-        ort.env.wasm.numThreads = 1;   // GitHub Pages 无跨域隔离，单线程最稳
-        ortReady = true;
-        return;
-      }
-    } catch (e) { lastErr = e; }
+      if (!window.ort) throw new Error("脚本已加载但 ort 对象未出现");
+      ort.env.wasm.wasmPaths = m.wasm;
+      ort.env.wasm.numThreads = 1;   // GitHub Pages 无跨域隔离，单线程最稳
+      ortReady = true;
+      return;
+    } catch (e) {
+      lastErr = e;
+      console.error("[玉米医生] 引擎源不可用:", m.js, e);
+    }
   }
-  throw new Error("推理引擎加载失败，请检查网络后刷新重试" + (lastErr ? "（" + lastErr.message + "）" : ""));
+  throw new Error("推理引擎加载失败，请检查网络后刷新重试" + (lastErr ? "（" + fmtErr(lastErr) + "）" : ""));
 }
 
 /* ---------- 加载模型（带下载进度） ---------- */
@@ -248,7 +264,7 @@ async function ensureModel() {
     for (const c of chunks) { buf.set(c, off); off += c.length; }
     el("progressFill").style.width = "100%";
     setStatus("正在初始化模型…");
-    session = await ort.InferenceSession.create(buf.buffer, {
+    session = await ort.InferenceSession.create(buf, {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all"
     });
@@ -293,14 +309,19 @@ async function predict(source, previewUrl) {
   el("result").style.display = "none";
   el("loading").style.display = "block";
   setBusy(true);
+  let stage = "加载推理引擎";
   try {
     await ensureOrt();
+    stage = "下载模型";
     const sess = await ensureModel();
+    stage = "解析图片";
     const tensor = await sourceToTensor(source);
     el("loading").style.display = "none";
     setStatus("推理中…");
     await new Promise(r => setTimeout(r, 30));   // 让 UI 先刷新
+    stage = "模型推理";
     const outputs = await sess.run({ [sess.inputNames[0]]: tensor });
+    stage = "渲染结果";
     const raw = Array.from(outputs[sess.outputNames[0]].data);
     let probs = raw.slice(0, 4);
     const sum = probs.reduce((a, b) => a + b, 0);
@@ -316,7 +337,7 @@ async function predict(source, previewUrl) {
     setStatus("");
   } catch (e) {
     el("loading").style.display = "none";
-    showError("识别失败：" + e.message);
+    showError("识别失败[" + stage + "]：" + fmtErr(e));
     setStatus("");
   } finally {
     setBusy(false);
@@ -405,7 +426,7 @@ el("btnSample").onclick = () => {
   fetch("test_leaf.jpg")
     .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); })
     .then(b => predict(b, URL.createObjectURL(b)))
-    .catch(err => showError("示例图片加载失败：" + err.message));
+    .catch(err => showError("示例图片加载失败：" + fmtErr(err)));
 };
 el("btnAgain").onclick = () => {
   el("result").style.display = "none";
