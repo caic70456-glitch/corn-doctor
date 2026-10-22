@@ -8,6 +8,7 @@
 .logo { font-size: 72rpx; }
 .title { font-size: 44rpx; font-weight: 800; color: #1b5e20; letter-spacing: 4rpx; }
 .sub { font-size: 24rpx; color: #6b7a6b; }
+.meta { font-size: 21rpx; color: #8b9a8b; }
 
 .card {
   background: #fff; border-radius: 24rpx; padding: 24rpx; margin-top: 24rpx;

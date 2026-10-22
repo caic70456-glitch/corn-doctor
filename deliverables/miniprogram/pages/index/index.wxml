@@ -4,6 +4,8 @@
     <text class="logo">🌽</text>
     <text class="title">玉米医生</text>
     <text class="sub">AI 拍照识别玉米病虫害</text>
+    <text wx:if="{{modelInfo}}" class="meta">{{modelInfo}}</text>
+    <text class="meta">📴 完全离线识别，无需联网</text>
   </view>
 
   <!-- 相机取景 -->
@@ -56,7 +58,7 @@
         {{result.has_disease ? '⚠️ 发现病害' : '✅ 健康'}}
       </text>
       <view class="cls">{{result.class_cn}}</view>
-      <view class="conf">置信度 {{result.confidence}}%</view>
+      <view class="conf">置信度 {{result.confidence}}%<text wx:if="{{result.ms}}"> · 耗时 {{result.ms}} ms</text></view>
     </view>
 
     <!-- 绿叶检测（通过） -->

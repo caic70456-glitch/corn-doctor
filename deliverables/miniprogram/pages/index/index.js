@@ -1,8 +1,19 @@
 // pages/index/index.js
-const { baseUrl, shareCode } = require("../../utils/config.js");
+// 本地离线识别：模型与推理全部在小程序内完成，不需要后端 / 服务器 / 域名配置
+const { predict: localPredict, loadModel, TEST_ACC, INPUT_SIZE } = require("../../utils/inference.js");
 
-// 拼接接口地址：线上链接需要 sharecode 访问凭证
-const predictUrl = baseUrl + "/predict" + (shareCode ? "?sharecode=" + shareCode : "");
+const CLASS_CN = {
+  Blight: "叶斑病",
+  Common_Rust: "普通锈病",
+  Gray_Leaf_Spot: "灰斑病",
+  Healthy: "健康"
+};
+const ADVICE = {
+  Blight: "玉米叶斑病：及时摘除下部重病叶并带出田外销毁；发病初期可用苯醚甲环唑、吡唑醚菌酯等药剂喷雾防治，间隔7~10天连喷2次；合理密植、增施钾肥提高抗性。",
+  Common_Rust: "玉米普通锈病：选用抗病品种；发病初期喷施三唑酮、戊唑醇或苯醚甲环唑，间隔7~10天连喷2~3次；注意田间排水、降低湿度。",
+  Gray_Leaf_Spot: "玉米灰斑病：收获后清除病残体减少越冬菌源；发病初期用嘧菌酯、吡唑醚菌酯或苯醚甲环唑喷雾，重点保护果穗上下叶片。",
+  Healthy: "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。"
+};
 
 Page({
   data: {
@@ -10,9 +21,20 @@ Page({
     cameraMode: false,   // 是否打开相机取景
     loading: false,
     result: null,
-    leaf: null,          // 绿叶预检结果（服务端返回）
+    leaf: null,          // 绿叶预检结果
     noLeaf: false,       // 画面不是玉米叶片
-    error: ""
+    error: "",
+    modelReady: false,
+    modelInfo: ""
+  },
+
+  onLoad() {
+    const info = "本地模型 · 输入 " + INPUT_SIZE + "×" + INPUT_SIZE + " · 测试准确率 " + TEST_ACC + "%";
+    this.setData({ modelInfo: info });
+    // 预热：提前把权重读入内存，首次识别更快
+    loadModel()
+      .then(() => this.setData({ modelReady: true }))
+      .catch((e) => this.setData({ error: "模型加载失败：" + (e.message || e) }));
   },
 
   // ---------- 打开/关闭相机取景 ----------
@@ -55,34 +77,41 @@ Page({
     });
   },
 
-  // ---------- 上传识别 ----------
-  predict(filePath) {
-    this.setData({ loading: true, noLeaf: false, leaf: null });
-    wx.uploadFile({
-      url: predictUrl,
-      filePath,
-      name: "file",
-      success: (res) => {
-        try {
-          const data = JSON.parse(res.data);
-          // 绿叶预检未通过：画面里不是玉米叶片，服务端不会做病害判定
-          if (data.leaf && !data.leaf.is_leaf) {
-            this.setData({ leaf: data.leaf, noLeaf: true, result: null, error: "" });
-            return;
-          }
-          if (data.error) throw new Error(data.error);
-          this.setData({ result: data, leaf: data.leaf || null, noLeaf: false, error: "" });
-        } catch (e) {
-          this.setData({ error: "识别失败: " + e.message });
+  // ---------- 本地识别（无网络请求） ----------
+  async predict(filePath) {
+    this.setData({ loading: true, noLeaf: false, leaf: null, error: "" });
+    try {
+      const res = await localPredict(filePath);
+
+      // 绿叶预检未通过：不是玉米叶片，不做病害判定
+      if (!res.ok) {
+        this.setData({ leaf: res.leaf, noLeaf: true, result: null });
+        return;
+      }
+
+      const top = res.top;
+      this.setData({
+        leaf: res.leaf,
+        noLeaf: false,
+        result: {
+          class: top.cls,
+          class_cn: CLASS_CN[top.cls] || top.cls,
+          confidence: +(top.p * 100).toFixed(2),
+          has_disease: top.cls !== "Healthy",
+          advice: ADVICE[top.cls] || "",
+          ms: res.ms,
+          probs: res.probs.map((r) => ({
+            class: r.cls,
+            class_cn: CLASS_CN[r.cls] || r.cls,
+            prob: +(r.p * 100).toFixed(2)
+          }))
         }
-      },
-      fail: () => {
-        this.setData({
-          error: "网络错误：请确认手机与服务器在同一局域网，且已修改 utils/config.js 中的 baseUrl"
-        });
-      },
-      complete: () => this.setData({ loading: false })
-    });
+      });
+    } catch (e) {
+      this.setData({ error: "识别失败：" + (e && e.message ? e.message : e) });
+    } finally {
+      this.setData({ loading: false });
+    }
   },
 
   // 重拍/重新选择

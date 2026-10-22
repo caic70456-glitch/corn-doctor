@@ -1,5 +1,6 @@
 {
   "pages": ["pages/index/index"],
+  "lazyCodeLoading": "requiredComponents",
   "window": {
     "navigationBarTitleText": "玉米医生",
     "navigationBarBackgroundColor": "#2e7d32",

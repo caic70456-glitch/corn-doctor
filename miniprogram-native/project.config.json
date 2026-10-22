@@ -1,7 +1,9 @@
 {
   "description": "玉米医生 - 拍照识别玉米病虫害",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "tools" }
+    ],
     "include": []
   },
   "setting": {
