@@ -51,6 +51,23 @@
   border-radius: 16rpx; padding: 20rpx 24rpx; font-size: 26rpx; line-height: 1.6;
 }
 
+/* 绿叶预检未通过 */
+.noleaf { border: 3rpx solid #f2d9a0; background: #fdf8ec; }
+.noleaf-head { font-size: 32rpx; font-weight: 700; color: #8a6100; }
+.noleaf-msg { margin-top: 12rpx; font-size: 26rpx; color: #7a5a10; line-height: 1.7; }
+.noleaf-metrics {
+  margin-top: 14rpx; display: flex; gap: 28rpx;
+  font-size: 24rpx; color: #9a7a30;
+}
+
+/* 绿叶检测通过 */
+.leaf-strip {
+  margin-top: 18rpx; padding: 14rpx 20rpx; border-radius: 12rpx;
+  background: #eef7ef; display: flex; flex-direction: column; gap: 6rpx;
+}
+.leaf-ok { font-size: 25rpx; font-weight: 700; color: #2e7d32; }
+.leaf-num { font-size: 23rpx; color: #6b7a6b; }
+
 .verdict { text-align: center; padding: 10rpx 0; display: flex; flex-direction: column; align-items: center; gap: 10rpx; }
 .tag { display: inline-block; padding: 10rpx 30rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; color: #fff; }
 .tag.healthy { background: #2e7d32; }

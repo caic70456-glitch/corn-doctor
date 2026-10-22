@@ -101,6 +101,22 @@
     border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.6; color: #8e2a20;
   }
 
+  /* 绿叶预检未通过 */
+  .leafblocked {
+    display: none; margin-top: 14px; background: #fdf8ec; border-left: 4px solid var(--gold, #f0a500);
+    border-radius: 8px; padding: 13px 15px; font-size: 14px; line-height: 1.7; color: #7a5a10;
+  }
+  .leafblocked b { color: #8a6100; font-size: 15px; }
+  .leafblocked .metrics { margin-top: 6px; font-size: 13px; color: #9a7a30; }
+
+  /* 绿叶检测通过 */
+  .leaf-strip {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+    padding: 9px 13px; border-radius: 9px; background: var(--green-light);
+    font-size: 13px; color: #2e7d32; margin-bottom: 10px;
+  }
+  .leaf-strip:empty { display: none; }
+
   footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; line-height: 1.8; }
   footer a { color: var(--green); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
@@ -142,9 +158,11 @@
     <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
     <div id="loading"><div class="spinner"></div>AI 识别中…</div>
     <div class="error" id="errorBox"></div>
+    <div class="leafblocked" id="leafBlocked"></div>
   </div>
 
   <div class="card" id="result">
+    <div class="leaf-strip" id="leafStrip"></div>
     <div class="verdict">
       <span class="tag" id="verdictTag">健康</span>
       <div class="cls" id="verdictCls">—</div>
@@ -203,6 +221,22 @@ function showError(msg) {
   b.textContent = msg; b.style.display = "block";
 }
 function clearError() { el("errorBox").style.display = "none"; }
+
+/* 绿叶预检未通过提示（区别于识别错误） */
+function showLeafBlocked(leaf, previewUrl) {
+  if (previewUrl) {
+    el("previewImg").src = previewUrl;
+    el("previewImg").style.display = "block";
+    el("placeholder").style.display = "none";
+  }
+  const b = el("leafBlocked");
+  b.innerHTML = "<b>🍂 未检测到玉米叶片</b><br>" + leaf.message +
+    '<div class="metrics">绿色占比 ' + leaf.green_ratio + '%　画面亮度 ' + leaf.brightness + "</div>" +
+    '<div class="metrics">请把玉米叶片放在画面中央、让叶片占满画面后重试</div>';
+  b.style.display = "block";
+  el("result").style.display = "none";
+  b.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
 
 /* ---------- 错误格式化（ort/浏览器可能抛出非 Error 对象） ---------- */
 function fmtErr(e) {
@@ -285,6 +319,46 @@ async function ensureModel() {
   }
 }
 
+/* ---------- 绿叶检测常量（阈值与 PC 端 07_摄像头实时检测.py 一致） ---------- */
+const DARK_MEAN = 45;          // 平均亮度低于该值 -> 光照不足
+const LEAF_MIN_RATIO = 0.02;   // 绿色像素占比低于该值 -> 不是叶片
+const LEAF_H_MIN = 70, LEAF_H_MAX = 180;   // 绿色色相区间（度）
+const LEAF_S_MIN = 60 / 255, LEAF_V_MIN = 40 / 255;
+
+/* 统计画面绿色(叶色)占比与亮度，判断是否为玉米绿叶 */
+function leafCheck(px, n) {
+  let green = 0, vsum = 0;
+  for (let i = 0; i < n; i++) {
+    const r = px[i * 4] / 255, g = px[i * 4 + 1] / 255, b = px[i * 4 + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d > 1e-6) {
+      if (mx === r) h = 60 * (((g - b) / d) % 6);
+      else if (mx === g) h = 60 * ((b - r) / d + 2);
+      else h = 60 * ((r - g) / d + 4);
+    }
+    if (h < 0) h += 360;
+    const s = mx === 0 ? 0 : d / mx;
+    vsum += mx;
+    if (h >= LEAF_H_MIN && h <= LEAF_H_MAX && s >= LEAF_S_MIN && mx >= LEAF_V_MIN) green++;
+  }
+  const greenRatio = green / n, brightness = (vsum / n) * 255;
+  let ok, msg;
+  if (brightness < DARK_MEAN) {
+    ok = false; msg = "光照不足，请对准玉米叶片并保证光线充足";
+  } else if (greenRatio < LEAF_MIN_RATIO) {
+    ok = false; msg = "未检测到玉米叶片（绿色占比 " + (greenRatio * 100).toFixed(1) + "%），请对准叶片后重拍";
+  } else {
+    ok = true; msg = "已确认玉米叶片";
+  }
+  return {
+    is_leaf: ok,
+    green_ratio: +(greenRatio * 100).toFixed(2),
+    brightness: +brightness.toFixed(1),
+    message: msg
+  };
+}
+
 /* ---------- 图片 -> 张力（与 PC 端预处理一致） ---------- */
 async function sourceToTensor(src) {
   let bmp;
@@ -305,18 +379,20 @@ async function sourceToTensor(src) {
   if ("close" in bmp) bmp.close();
   const px = ctx.getImageData(0, 0, IMG, IMG).data;
   const n = IMG * IMG;
+  const leaf = leafCheck(px, n);          // 顺带做绿叶预检（同一份像素）
   const data = new Float32Array(3 * n);
   for (let i = 0; i < n; i++) {
     data[i]         = (px[i * 4]     / 255 - MEAN[0]) / STD[0];
     data[n + i]     = (px[i * 4 + 1] / 255 - MEAN[1]) / STD[1];
     data[2 * n + i] = (px[i * 4 + 2] / 255 - MEAN[2]) / STD[2];
   }
-  return new ort.Tensor("float32", data, [1, 3, IMG, IMG]);
+  return { tensor: new ort.Tensor("float32", data, [1, 3, IMG, IMG]), leaf };
 }
 
 /* ---------- 识别主流程 ---------- */
 async function predict(source, previewUrl) {
   clearError();
+  el("leafBlocked").style.display = "none";
   el("result").style.display = "none";
   el("loading").style.display = "block";
   setBusy(true);
@@ -326,8 +402,17 @@ async function predict(source, previewUrl) {
     stage = "下载模型";
     const sess = await ensureModel();
     stage = "解析图片";
-    const tensor = await sourceToTensor(source);
+    const prepared = await sourceToTensor(source);
+    const tensor = prepared.tensor, leaf = prepared.leaf;
     el("loading").style.display = "none";
+
+    // 绿叶预检未通过：画面里不是玉米叶片，直接提示，不做病害分析
+    if (!leaf.is_leaf) {
+      showLeafBlocked(leaf, previewUrl);
+      setStatus("");
+      return;
+    }
+
     setStatus("推理中…");
     await new Promise(r => setTimeout(r, 30));   // 让 UI 先刷新
     stage = "模型推理";
@@ -344,7 +429,7 @@ async function predict(source, previewUrl) {
     }
     const ranked = CLASSES.map((c, i) => ({ cls: c, p: probs[i] }))
       .sort((a, b) => b.p - a.p);
-    render(ranked, previewUrl);
+    render(ranked, previewUrl, leaf);
     setStatus("");
   } catch (e) {
     el("loading").style.display = "none";
@@ -359,12 +444,15 @@ function setBusy(b) {
   ["btnCamera", "btnUpload", "btnSample"].forEach(id => el(id).disabled = b);
 }
 
-function render(ranked, previewUrl) {
+function render(ranked, previewUrl, leaf) {
   if (previewUrl) {
     el("previewImg").src = previewUrl;
     el("previewImg").style.display = "block";
     el("placeholder").style.display = "none";
   }
+  el("leafStrip").innerHTML = leaf
+    ? "<span>🌿 已确认玉米叶片</span><span>绿色占比 " + leaf.green_ratio + "% · 亮度 " + leaf.brightness + "</span>"
+    : "";
   const top = ranked[0];
   const healthy = top.cls === "Healthy";
   el("verdictTag").textContent = healthy ? "✅ 健康" : "⚠️ 发现病害";
@@ -441,6 +529,7 @@ el("btnSample").onclick = () => {
 };
 el("btnAgain").onclick = () => {
   el("result").style.display = "none";
+  el("leafBlocked").style.display = "none";
   el("previewImg").style.display = "none";
   el("placeholder").style.display = "flex";
   setStatus("");

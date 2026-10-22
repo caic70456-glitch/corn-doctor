@@ -38,6 +38,17 @@
 
   <view wx:if="{{error}}" class="error">{{error}}</view>
 
+  <!-- 绿叶预检未通过：画面里不是玉米叶片 -->
+  <view wx:if="{{noLeaf}}" class="card noleaf">
+    <view class="noleaf-head">🍂 未检测到玉米叶片</view>
+    <view class="noleaf-msg">{{leaf.message}}</view>
+    <view class="noleaf-metrics">
+      <text>绿色占比 {{leaf.green_ratio}}%</text>
+      <text>画面亮度 {{leaf.brightness}}</text>
+    </view>
+    <button class="btn ghost again" bindtap="retake">🔄 对准叶片重拍</button>
+  </view>
+
   <!-- 识别结果 -->
   <view class="card result" wx:if="{{result}}">
     <view class="verdict">
@@ -46,6 +57,12 @@
       </text>
       <view class="cls">{{result.class_cn}}</view>
       <view class="conf">置信度 {{result.confidence}}%</view>
+    </view>
+
+    <!-- 绿叶检测（通过） -->
+    <view wx:if="{{leaf}}" class="leaf-strip">
+      <text class="leaf-ok">🌿 已确认玉米叶片</text>
+      <text class="leaf-num">绿色占比 {{leaf.green_ratio}}% · 亮度 {{leaf.brightness}}</text>
     </view>
 
     <view class="bars">

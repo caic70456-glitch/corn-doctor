@@ -84,6 +84,21 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   #loading { display: none; text-align: center; color: var(--muted); font-size: 14px; }
 
+  /* 绿叶检测：通过 */
+  .leaf-strip {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    background: var(--green-light); border-radius: 9px; padding: 9px 13px;
+    font-size: 13px; color: var(--green); margin-bottom: 12px;
+  }
+  .leaf-strip:empty { display: none; }
+  /* 绿叶检测：未通过 */
+  .noleaf {
+    display: none; margin-top: 14px; background: #fdf8ec; border-left: 4px solid #f0a500;
+    border-radius: 8px; padding: 13px 15px; font-size: 14px; line-height: 1.7; color: #7a5a10;
+  }
+  .noleaf .h { font-size: 15px; font-weight: 700; color: #8a6100; }
+  .noleaf .m { margin-top: 6px; font-size: 13px; color: #9a7a30; }
+
   footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
 </style>
 </head>
@@ -116,9 +131,11 @@
     </div>
 
     <div id="loading"><div class="spinner"></div>AI 识别中…</div>
+    <div class="noleaf" id="leafBlocked"></div>
   </div>
 
   <div class="card" id="result">
+    <div class="leaf-strip" id="leafStrip"></div>
     <div class="verdict">
       <span class="tag" id="verdictTag">健康</span>
       <div class="cls" id="verdictCls">—</div>
@@ -194,12 +211,18 @@ function showPreview(dataUrl) {
 async function predict(blob) {
   el("loading").style.display = "block";
   el("result").style.display = "none";
+  el("leafBlocked").style.display = "none";
   try {
     const fd = new FormData();
     fd.append("file", blob, "photo.jpg");
     const res = await fetch("/predict", { method: "POST", body: fd });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "识别失败");
+    // 绿叶预检未通过：画面里不是玉米叶片，不做病害判定
+    if (data.leaf && !data.leaf.is_leaf) {
+      showLeafBlocked(data.leaf);
+      return;
+    }
+    if (!res.ok || data.error) throw new Error(data.error || "识别失败");
     render(data);
   } catch (e) {
     alert(e.message);
@@ -208,7 +231,20 @@ async function predict(blob) {
   }
 }
 
+function showLeafBlocked(leaf) {
+  const b = el("leafBlocked");
+  b.innerHTML = '<div class="h">🍂 未检测到玉米叶片</div>' +
+    "<div>" + leaf.message + "</div>" +
+    '<div class="m">绿色占比 ' + leaf.green_ratio + '%　画面亮度 ' + leaf.brightness + "</div>" +
+    '<div class="m">请把玉米叶片放在画面中央、让叶片占满画面后重试</div>';
+  b.style.display = "block";
+  b.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 function render(d) {
+  el("leafStrip").innerHTML = d.leaf
+    ? "<span>🌿 已确认玉米叶片</span><span>绿色占比 " + d.leaf.green_ratio + "% · 亮度 " + d.leaf.brightness + "</span>"
+    : "";
   const healthy = !d.has_disease;
   el("verdictTag").textContent = healthy ? "✅ 健康" : "⚠️ 发现病害";
   el("verdictTag").className = "tag " + (healthy ? "healthy" : "sick");

@@ -10,12 +10,14 @@ Page({
     cameraMode: false,   // 是否打开相机取景
     loading: false,
     result: null,
+    leaf: null,          // 绿叶预检结果（服务端返回）
+    noLeaf: false,       // 画面不是玉米叶片
     error: ""
   },
 
   // ---------- 打开/关闭相机取景 ----------
   openCamera() {
-    this.setData({ cameraMode: true, result: null, error: "" });
+    this.setData({ cameraMode: true, result: null, leaf: null, noLeaf: false, error: "" });
   },
   closeCamera() {
     this.setData({ cameraMode: false });
@@ -47,7 +49,7 @@ Page({
       sizeType: ["compressed"],
       success: (res) => {
         const path = res.tempFiles[0].tempFilePath;
-        this.setData({ photoPath: path, result: null, error: "" });
+        this.setData({ photoPath: path, result: null, leaf: null, noLeaf: false, error: "" });
         this.predict(path);
       }
     });
@@ -55,7 +57,7 @@ Page({
 
   // ---------- 上传识别 ----------
   predict(filePath) {
-    this.setData({ loading: true });
+    this.setData({ loading: true, noLeaf: false, leaf: null });
     wx.uploadFile({
       url: predictUrl,
       filePath,
@@ -63,8 +65,13 @@ Page({
       success: (res) => {
         try {
           const data = JSON.parse(res.data);
+          // 绿叶预检未通过：画面里不是玉米叶片，服务端不会做病害判定
+          if (data.leaf && !data.leaf.is_leaf) {
+            this.setData({ leaf: data.leaf, noLeaf: true, result: null, error: "" });
+            return;
+          }
           if (data.error) throw new Error(data.error);
-          this.setData({ result: data, error: "" });
+          this.setData({ result: data, leaf: data.leaf || null, noLeaf: false, error: "" });
         } catch (e) {
           this.setData({ error: "识别失败: " + e.message });
         }
@@ -80,6 +87,6 @@ Page({
 
   // 重拍/重新选择
   retake() {
-    this.setData({ photoPath: "", result: null, error: "" });
+    this.setData({ photoPath: "", result: null, leaf: null, noLeaf: false, error: "" });
   }
 });
