@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玉米医生 · 在线识别</title>
+<meta name="description" content="玉米病害在线识别：浏览器端直接运行 MobileNetV2 ONNX 模型，图片不上传服务器，叶斑病 / 普通锈病 / 灰斑病 / 健康 四分类">
+<style>
+  :root {
+    --green: #2e7d32; --green-light: #e8f5e9; --green-dark: #1b5e20;
+    --text: #1f2d1f; --muted: #6b7a6b; --card: #ffffff; --bg: #f4f7f2;
+    --danger: #c62828; --radius: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { text-align: center; padding: 24px 0 8px; }
+  header h1 { font-size: 26px; color: var(--green-dark); letter-spacing: 2px; }
+  header p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  header .back { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--green); text-decoration: none; }
+  header .back:hover { text-decoration: underline; }
+  .corn { font-size: 40px; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    margin-top: 16px; box-shadow: 0 2px 12px rgba(46,125,50,.08);
+  }
+
+  #cameraView, #previewImg, .placeholder {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px;
+    background: #10250f; display: block;
+  }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    color: #7ea87f; font-size: 14px; gap: 8px; background: var(--green-light);
+    border: 2px dashed #a5d0a7; text-align: center;
+  }
+  .placeholder .icon { font-size: 44px; }
+  #cameraView { display: none; }
+
+  .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    flex: 1; min-width: 110px; padding: 13px 0; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: .15s;
+  }
+  button:active { transform: scale(.97); }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-ghost { background: var(--green-light); color: var(--green-dark); }
+  .btn-ghost:hover { background: #d4ead6; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .status {
+    margin-top: 14px; font-size: 13px; color: var(--muted); text-align: center;
+    min-height: 18px; line-height: 1.5;
+  }
+  .progress-track {
+    height: 8px; background: #eef3ea; border-radius: 999px; overflow: hidden;
+    margin-top: 6px; display: none;
+  }
+  .progress-fill { height: 100%; width: 0; background: var(--green); border-radius: 999px; transition: width .2s; }
+
+  #result { display: none; }
+  .verdict { text-align: center; padding: 8px 0 4px; }
+  .verdict .tag {
+    display: inline-block; padding: 6px 18px; border-radius: 999px;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .tag.healthy { background: var(--green); }
+  .tag.sick { background: var(--danger); }
+  .verdict .cls { font-size: 24px; font-weight: 800; margin-top: 10px; }
+  .verdict .cls-en { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .verdict .conf { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .bars { margin-top: 16px; }
+  .bar-row { margin-bottom: 12px; }
+  .bar-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .bar-head b { font-weight: 600; }
+  .bar-track { height: 10px; background: #eef3ea; border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: #9cc79e; transition: width .6s ease; }
+  .bar-row.top .bar-fill { background: linear-gradient(90deg, #66bb6a, #2e7d32); }
+
+  .advice {
+    margin-top: 14px; background: var(--green-light); border-left: 4px solid var(--green);
+    border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #33502f;
+  }
+  .advice b { color: var(--green-dark); }
+
+  .spinner {
+    width: 34px; height: 34px; border: 4px solid #cfe4d0; border-top-color: var(--green);
+    border-radius: 50%; margin: 18px auto 6px; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading { display: none; text-align: center; color: var(--muted); font-size: 14px; }
+
+  .error {
+    display: none; margin-top: 14px; background: #fdecea; border-left: 4px solid var(--danger);
+    border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.6; color: #8e2a20;
+  }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; line-height: 1.8; }
+  footer a { color: var(--green); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="corn">🌽</div>
+    <h1>玉米医生</h1>
+    <p>AI 在线识别玉米病害 · 叶斑病 / 普通锈病 / 灰斑病 / 健康</p>
+    <p style="margin-top:4px">模型在您的浏览器本地运行，照片不会上传到任何服务器</p>
+    <a class="back" href="./">← 返回项目方案介绍</a>
+  </header>
+
+  <div class="card">
+    <video id="cameraView" autoplay playsinline muted></video>
+    <img id="previewImg" alt="预览图" style="display:none">
+    <div class="placeholder" id="placeholder">
+      <div class="icon">📷</div>
+      <div>拍照、上传叶片照片<br>或点击「示例图片」直接体验</div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <input type="file" id="captureInput" accept="image/*" capture="environment" hidden>
+    <canvas id="canvas" hidden></canvas>
+
+    <div class="btns">
+      <button class="btn-primary" id="btnCamera">📷 拍照识别</button>
+      <button class="btn-ghost" id="btnUpload">🖼 上传图片</button>
+      <button class="btn-ghost" id="btnSample">🍀 示例图片</button>
+    </div>
+    <div class="btns" id="actionRow" style="display:none">
+      <button class="btn-primary" id="btnShot">📸 拍摄并识别</button>
+      <button class="btn-ghost" id="btnCancel">取消</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
+    <div id="loading"><div class="spinner"></div>AI 识别中…</div>
+    <div class="error" id="errorBox"></div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="verdict">
+      <span class="tag" id="verdictTag">健康</span>
+      <div class="cls" id="verdictCls">—</div>
+      <div class="cls-en" id="verdictClsEn"></div>
+      <div class="conf" id="verdictConf">置信度 —</div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="advice" id="advice"></div>
+    <div class="btns"><button class="btn-ghost" id="btnAgain">🔄 换一张图片</button></div>
+  </div>
+
+  <footer>
+    玉米医生 · AIC-2026-46559581 · MobileNetV2 ONNX · 浏览器端推理（onnxruntime-web）<br>
+    识别结果仅作辅助诊断参考 · <a href="./">项目方案</a> · <a href="https://github.com/caic70456-glitch/corn-doctor">GitHub 仓库</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const el = id => document.getElementById(id);
+
+/* ---------- 常量 ---------- */
+const MODEL_URL = "models/best.onnx";
+const MODEL_SIZE = 9155789;
+const IMG = 224;
+const MEAN = [0.485, 0.456, 0.406], STD = [0.229, 0.224, 0.225];
+const CLASSES = ["Blight", "Common_Rust", "Gray_Leaf_Spot", "Healthy"];
+const CLASS_CN = { Blight: "叶斑病", Common_Rust: "普通锈病", Gray_Leaf_Spot: "灰斑病", Healthy: "健康" };
+const ADVICE = {
+  Blight: "玉米叶斑病：及时摘除下部重病叶并带出田外销毁；发病初期可用苯醚甲环唑、吡唑醚菌酯等药剂喷雾防治，间隔7~10天连喷2次；合理密植、增施钾肥提高抗性。",
+  Common_Rust: "玉米普通锈病：选用抗病品种；发病初期喷施三唑酮、戊唑醇或苯醚甲环唑，间隔7~10天连喷2~3次；注意田间排水、降低湿度。",
+  Gray_Leaf_Spot: "玉米灰斑病：收获后清除病残体减少越冬菌源；发病初期用嘧菌酯、吡唑醚菌酯或苯醚甲环唑喷雾，重点保护果穗上下叶片。",
+  Healthy: "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。"
+};
+
+/* onnxruntime-web 镜像：国内 npmmirror 优先，jsdelivr 兜底 */
+const ORT_MIRRORS = [
+  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js", dist: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/" },
+  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js", dist: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/" }
+];
+
+let ortReady = false, session = null;
+
+/* ---------- 状态提示 ---------- */
+function setStatus(msg) { el("status").textContent = msg || ""; }
+function showError(msg) {
+  const b = el("errorBox");
+  b.textContent = msg; b.style.display = "block";
+}
+function clearError() { el("errorBox").style.display = "none"; }
+
+/* ---------- 加载推理引擎 ---------- */
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => res();
+    s.onerror = () => { s.remove(); rej(new Error("加载失败: " + src)); };
+    document.head.appendChild(s);
+  });
+}
+async function ensureOrt() {
+  if (ortReady) return;
+  setStatus("正在加载推理引擎…");
+  let lastErr = null;
+  for (const m of ORT_MIRRORS) {
+    try {
+      await loadScript(m.js);
+      if (window.ort) {
+        ort.env.wasm.wasmPaths = m.dist;
+        ort.env.wasm.numThreads = 1;   // GitHub Pages 无跨域隔离，单线程最稳
+        ortReady = true;
+        return;
+      }
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error("推理引擎加载失败，请检查网络后刷新重试" + (lastErr ? "（" + lastErr.message + "）" : ""));
+}
+
+/* ---------- 加载模型（带下载进度） ---------- */
+async function ensureModel() {
+  if (session) return session;
+  setStatus("正在下载模型（约 9 MB，首次稍慢，之后浏览器会缓存）…");
+  el("progressTrack").style.display = "block";
+  try {
+    const resp = await fetch(MODEL_URL);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const total = +resp.headers.get("Content-Length") || MODEL_SIZE;
+    const reader = resp.body.getReader();
+    const chunks = []; let got = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = Math.min(99, Math.round(got / total * 100));
+      el("progressFill").style.width = pct + "%";
+      setStatus("模型下载中 " + pct + "%（" + (got / 1048576).toFixed(1) + " MB）");
+    }
+    const buf = new Uint8Array(got);
+    let off = 0;
+    for (const c of chunks) { buf.set(c, off); off += c.length; }
+    el("progressFill").style.width = "100%";
+    setStatus("正在初始化模型…");
+    session = await ort.InferenceSession.create(buf.buffer, {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all"
+    });
+    return session;
+  } finally {
+    el("progressTrack").style.display = "none";
+  }
+}
+
+/* ---------- 图片 -> 张力（与 PC 端预处理一致） ---------- */
+async function sourceToTensor(src) {
+  let bmp;
+  try {
+    bmp = await createImageBitmap(src, { imageOrientation: "from-image" });
+  } catch (e) {
+    bmp = await new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = () => rej(new Error("图片解码失败"));
+      img.src = URL.createObjectURL(src);
+    });
+  }
+  const c = el("canvas");
+  c.width = IMG; c.height = IMG;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0, IMG, IMG);
+  if ("close" in bmp) bmp.close();
+  const px = ctx.getImageData(0, 0, IMG, IMG).data;
+  const n = IMG * IMG;
+  const data = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    data[i]         = (px[i * 4]     / 255 - MEAN[0]) / STD[0];
+    data[n + i]     = (px[i * 4 + 1] / 255 - MEAN[1]) / STD[1];
+    data[2 * n + i] = (px[i * 4 + 2] / 255 - MEAN[2]) / STD[2];
+  }
+  return new ort.Tensor("float32", data, [1, 3, IMG, IMG]);
+}
+
+/* ---------- 识别主流程 ---------- */
+async function predict(source, previewUrl) {
+  clearError();
+  el("result").style.display = "none";
+  el("loading").style.display = "block";
+  setBusy(true);
+  try {
+    await ensureOrt();
+    const sess = await ensureModel();
+    const tensor = await sourceToTensor(source);
+    el("loading").style.display = "none";
+    setStatus("推理中…");
+    await new Promise(r => setTimeout(r, 30));   // 让 UI 先刷新
+    const outputs = await sess.run({ [sess.inputNames[0]]: tensor });
+    const raw = Array.from(outputs[sess.outputNames[0]].data);
+    let probs = raw.slice(0, 4);
+    const sum = probs.reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - 1) > 0.05) {              // 模型未含 softmax 时兜底
+      const m = Math.max(...probs);
+      const ex = probs.map(v => Math.exp(v - m));
+      const s2 = ex.reduce((a, b) => a + b, 0);
+      probs = ex.map(v => v / s2);
+    }
+    const ranked = CLASSES.map((c, i) => ({ cls: c, p: probs[i] }))
+      .sort((a, b) => b.p - a.p);
+    render(ranked, previewUrl);
+    setStatus("");
+  } catch (e) {
+    el("loading").style.display = "none";
+    showError("识别失败：" + e.message);
+    setStatus("");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function setBusy(b) {
+  ["btnCamera", "btnUpload", "btnSample"].forEach(id => el(id).disabled = b);
+}
+
+function render(ranked, previewUrl) {
+  if (previewUrl) {
+    el("previewImg").src = previewUrl;
+    el("previewImg").style.display = "block";
+    el("placeholder").style.display = "none";
+  }
+  const top = ranked[0];
+  const healthy = top.cls === "Healthy";
+  el("verdictTag").textContent = healthy ? "✅ 健康" : "⚠️ 发现病害";
+  el("verdictTag").className = "tag " + (healthy ? "healthy" : "sick");
+  el("verdictCls").textContent = CLASS_CN[top.cls];
+  el("verdictClsEn").textContent = top.cls;
+  el("verdictConf").textContent = "置信度 " + (top.p * 100).toFixed(2) + "%";
+  el("bars").innerHTML = ranked.map((r, i) => `
+    <div class="bar-row ${i === 0 ? "top" : ""}">
+      <div class="bar-head"><b>${CLASS_CN[r.cls]}</b><span>${(r.p * 100).toFixed(2)}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:0"></div></div>
+    </div>`).join("");
+  requestAnimationFrame(() => {
+    el("bars").querySelectorAll(".bar-fill").forEach((f, i) => {
+      f.style.width = (ranked[i].p * 100).toFixed(2) + "%";
+    });
+  });
+  el("advice").innerHTML = "<b>防治建议：</b>" + ADVICE[top.cls];
+  el("result").style.display = "block";
+  el("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/* ---------- 相机 ---------- */
+let stream = null;
+el("btnCamera").onclick = async () => {
+  clearError();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false
+    });
+    el("cameraView").srcObject = stream;
+    el("cameraView").style.display = "block";
+    el("previewImg").style.display = "none";
+    el("placeholder").style.display = "none";
+    el("actionRow").style.display = "flex";
+  } catch (e) {
+    showError("无法打开摄像头：" + e.message + "。可改用「上传图片」或手机上「拍照」。");
+  }
+};
+el("btnCancel").onclick = () => {
+  stopCamera();
+  el("actionRow").style.display = "none";
+  el("placeholder").style.display = "flex";
+};
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  el("cameraView").style.display = "none";
+}
+el("btnShot").onclick = () => {
+  const video = el("cameraView"), c = el("canvas");
+  c.width = video.videoWidth || 1280;
+  c.height = video.videoHeight || 960;
+  c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+  stopCamera();
+  el("actionRow").style.display = "none";
+  c.toBlob(b => {
+    if (b) predict(b, c.toDataURL("image/jpeg", 0.92));
+  }, "image/jpeg", 0.92);
+};
+
+/* ---------- 上传 / 示例 ---------- */
+el("btnUpload").onclick = () => el("fileInput").click();
+el("fileInput").onchange = e => {
+  const f = e.target.files[0];
+  if (f) predict(f, URL.createObjectURL(f));
+  e.target.value = "";
+};
+el("btnSample").onclick = () => {
+  clearError();
+  fetch("test_leaf.jpg")
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); })
+    .then(b => predict(b, URL.createObjectURL(b)))
+    .catch(err => showError("示例图片加载失败：" + err.message));
+};
+el("btnAgain").onclick = () => {
+  el("result").style.display = "none";
+  el("previewImg").style.display = "none";
+  el("placeholder").style.display = "flex";
+  setStatus("");
+};
+
+/* 移动端「拍照识别」兜底：不支持 getUserMedia 时调起系统相机 */
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  el("btnCamera").onclick = () => el("captureInput").click();
+  el("captureInput").onchange = e => {
+    const f = e.target.files[0];
+    if (f) predict(f, URL.createObjectURL(f));
+    e.target.value = "";
+  };
+}
+</script>
+</body>
+</html>
