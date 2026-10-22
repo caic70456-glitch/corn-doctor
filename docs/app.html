@@ -180,15 +180,15 @@ const ADVICE = {
   Healthy: "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。"
 };
 
-/* onnxruntime-web 镜像。注意：JS 用 <script> 加载不需要 CORS，
-   但 ort 内部用 fetch 拉取 wasm 二进制必须带 access-control-allow-origin 头 ——
-   npmmirror 的 wasm 文件没有该头，故 wasm 源选 jsdelivr / unpkg，npmmirror 只作 JS 源 */
+/* onnxruntime-web 加载策略：
+   - JS 从 CDN 加载（jsdelivr 优先，npmmirror 兜底），<script> 标签不需要 CORS
+   - wasm 二进制自托管在 ./ort/（与页面同源）—— 实测部分网络环境下 CDN 的 wasm
+     fetch 会失败（CORS 或连通性），而同源资源与模型走同一条链路，稳定可靠 */
 const ORT_MIRRORS = [
-  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js",
-    wasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/" },
-  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js",
-    wasm: "https://unpkg.com/onnxruntime-web@1.17.3/dist/" }
+  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js" },
+  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js" }
 ];
+const WASM_PATH = "./ort/";
 
 let ortReady = false, session = null;
 
@@ -228,7 +228,7 @@ async function ensureOrt() {
     try {
       await loadScript(m.js);
       if (!window.ort) throw new Error("脚本已加载但 ort 对象未出现");
-      ort.env.wasm.wasmPaths = m.wasm;
+      ort.env.wasm.wasmPaths = WASM_PATH;
       ort.env.wasm.numThreads = 1;   // GitHub Pages 无跨域隔离，单线程最稳
       ortReady = true;
       return;
@@ -264,10 +264,15 @@ async function ensureModel() {
     for (const c of chunks) { buf.set(c, off); off += c.length; }
     el("progressFill").style.width = "100%";
     setStatus("正在初始化模型…");
-    session = await ort.InferenceSession.create(buf, {
-      executionProviders: ["wasm"],
-      graphOptimizationLevel: "all"
-    });
+    try {
+      session = await ort.InferenceSession.create(buf, {
+        executionProviders: ["wasm"],
+        graphOptimizationLevel: "all"
+      });
+    } catch (e) {
+      // ort wasm 侧异常可能以裸数字抛出，转成人话
+      throw new Error("模型初始化失败（wasm 推理环境异常" + (typeof e === "number" ? " #" + e : "") + "），请刷新页面重试");
+    }
     return session;
   } finally {
     el("progressTrack").style.display = "none";
