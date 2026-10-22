@@ -1,10 +1,12 @@
 // utils/inference.js
 // 纯 JS 前向推理（无后端、无插件、完全离线）
 // 网络：Conv3x3 + BN(已融合进权重) + ReLU  x4  ->  GlobalAvgPool  ->  FC(64->4)  ->  softmax
-// 权重文件：utils/model_weights.bin（由 tools/train_lite.py 导出，扁平 float32，按 meta 中的偏移切片）
 
-const MODEL_BIN = "utils/model_weights.bin";
-const MODEL_META = require("./model_meta.json");
+// 权重与元数据都以 js 模块形式内置：
+//   - 小程序不支持 require(.json)，用 .js 导出对象
+//   - 权重用 base64 内联，避免 readFileSync 读代码包二进制文件的兼容性问题
+const MODEL_META = require("./model_meta.js");
+const WEIGHTS_B64 = require("./model_weights_b64.js");
 
 // 绿叶检测阈值（与 PC 端 07_摄像头实时检测.py 一致）
 const DARK_MEAN = 45;
@@ -21,7 +23,7 @@ function loadModel() {
   if (loadPromise) return loadPromise;
   loadPromise = new Promise((resolve, reject) => {
     try {
-      const buf = wx.getFileSystemManager().readFileSync(MODEL_BIN);
+      const buf = wx.base64ToArrayBuffer(WEIGHTS_B64);
       const arr = new Float32Array(buf);
       if (arr.length !== MODEL_META.totalFloats) {
         return reject(new Error("模型权重长度不符：" + arr.length + " vs " + MODEL_META.totalFloats));
@@ -29,7 +31,7 @@ function loadModel() {
       WEIGHTS = arr;
       resolve(arr);
     } catch (e) {
-      reject(new Error("模型权重读取失败：" + (e && e.message ? e.message : e)));
+      reject(new Error("模型权重解码失败：" + (e && e.message ? e.message : e)));
     }
   });
   return loadPromise;
@@ -221,6 +223,9 @@ async function predict(filePath) {
 module.exports = {
   predict,
   loadModel,
+  // 以下两个仅用于离线自测（对比 Python 端结果），页面逻辑不直接调用
+  buildTensor,
+  forward,
   CLASSES: MODEL_META.classes,
   INPUT_SIZE: MODEL_META.input,
   TEST_ACC: MODEL_META.testAcc

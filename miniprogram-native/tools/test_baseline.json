@@ -1,0 +1,17 @@
+{
+ "input": 96,
+ "classes": [
+  "Blight",
+  "Common_Rust",
+  "Gray_Leaf_Spot",
+  "Healthy"
+ ],
+ "probs": [
+  70.2985,
+  7.2759,
+  1.663,
+  20.7626
+ ],
+ "green_ratio": 89.53,
+ "brightness": 117.1
+}

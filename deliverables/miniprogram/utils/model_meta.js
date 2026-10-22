@@ -1,4 +1,5 @@
-{
+// 模型元数据（由 tools/train_lite.py 生成；小程序不支持 require .json，故用 js 模块）
+module.exports = {
  "input": 96,
  "classes": [
   "Blight",
@@ -97,4 +98,4 @@
  },
  "totalFloats": 60772,
  "testAcc": 92.12
-}
+};
