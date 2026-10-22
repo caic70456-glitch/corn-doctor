@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玉米医生 · 拍照识别</title>
+<style>
+  :root {
+    --green: #2e7d32; --green-light: #e8f5e9; --green-dark: #1b5e20;
+    --text: #1f2d1f; --muted: #6b7a6b; --card: #ffffff; --bg: #f4f7f2;
+    --danger: #c62828; --radius: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { text-align: center; padding: 24px 0 8px; }
+  header h1 { font-size: 26px; color: var(--green-dark); letter-spacing: 2px; }
+  header p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .corn { font-size: 40px; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    margin-top: 16px; box-shadow: 0 2px 12px rgba(46,125,50,.08);
+  }
+
+  /* 拍照区 */
+  #cameraView, #previewImg, .placeholder {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px;
+    background: #10250f; display: block;
+  }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    color: #7ea87f; font-size: 14px; gap: 8px; background: var(--green-light);
+    border: 2px dashed #a5d0a7;
+  }
+  .placeholder .icon { font-size: 44px; }
+  #cameraView { display: none; }
+
+  .btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    flex: 1; min-width: 120px; padding: 13px 0; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: .15s;
+  }
+  button:active { transform: scale(.97); }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-ghost { background: var(--green-light); color: var(--green-dark); }
+  .btn-ghost:hover { background: #d4ead6; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* 结果 */
+  #result { display: none; }
+  .verdict { text-align: center; padding: 8px 0 4px; }
+  .verdict .tag {
+    display: inline-block; padding: 6px 18px; border-radius: 999px;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .tag.healthy { background: var(--green); }
+  .tag.sick { background: var(--danger); }
+  .verdict .cls { font-size: 24px; font-weight: 800; margin-top: 10px; }
+  .verdict .conf { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .bars { margin-top: 16px; }
+  .bar-row { margin-bottom: 12px; }
+  .bar-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .bar-head b { font-weight: 600; }
+  .bar-track { height: 10px; background: #eef3ea; border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: var(--green); transition: width .6s ease; }
+  .bar-row.top .bar-fill { background: linear-gradient(90deg, #66bb6a, #2e7d32); }
+
+  .advice {
+    margin-top: 14px; background: var(--green-light); border-left: 4px solid var(--green);
+    border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #33502f;
+  }
+  .advice b { color: var(--green-dark); }
+
+  .spinner {
+    width: 34px; height: 34px; border: 4px solid #cfe4d0; border-top-color: var(--green);
+    border-radius: 50%; margin: 18px auto 6px; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading { display: none; text-align: center; color: var(--muted); font-size: 14px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="corn">🌽</div>
+    <h1>玉米医生</h1>
+    <p>AI 拍照识别玉米病虫害 · 叶斑病 / 普通锈病 / 灰斑病 / 健康</p>
+  </header>
+
+  <div class="card">
+    <video id="cameraView" autoplay playsinline muted></video>
+    <img id="previewImg" alt="" style="display:none">
+    <div class="placeholder" id="placeholder">
+      <div class="icon">📷</div>
+      <div>点击下方「拍照识别」开启摄像头<br>或直接上传叶片照片</div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <canvas id="canvas" hidden></canvas>
+
+    <div class="btns">
+      <button class="btn-primary" id="btnCamera">📷 拍照识别</button>
+      <button class="btn-ghost" id="btnUpload">🖼 上传图片</button>
+    </div>
+    <div class="btns" id="actionRow" style="display:none">
+      <button class="btn-primary" id="btnShot">📸 拍摄并识别</button>
+      <button class="btn-ghost" id="btnCancel">取消</button>
+    </div>
+
+    <div id="loading"><div class="spinner"></div>AI 识别中…</div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="verdict">
+      <span class="tag" id="verdictTag">健康</span>
+      <div class="cls" id="verdictCls">—</div>
+      <div class="conf" id="verdictConf">置信度 —</div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="advice" id="advice"></div>
+  </div>
+
+  <footer>玉米医生 · AIC-2026-46559581 · 仅作辅助诊断参考</footer>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+let stream = null;
+
+el("btnCamera").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false
+    });
+    el("cameraView").srcObject = stream;
+    el("cameraView").style.display = "block";
+    el("previewImg").style.display = "none";
+    el("placeholder").style.display = "none";
+    el("actionRow").style.display = "flex";
+    el("btnCamera").textContent = "📷 重新打开相机";
+  } catch (e) {
+    alert("无法打开摄像头：" + e.message + "\n请检查浏览器权限，或使用上传图片功能。");
+  }
+};
+
+el("btnCancel").onclick = () => {
+  stopCamera();
+  el("placeholder").style.display = "flex";
+  el("actionRow").style.display = "none";
+};
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  el("cameraView").style.display = "none";
+}
+
+el("btnShot").onclick = () => {
+  const video = el("cameraView");
+  const c = el("canvas");
+  c.width = video.videoWidth || 1280;
+  c.height = video.videoHeight || 960;
+  c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+  stopCamera();
+  el("actionRow").style.display = "none";
+  showPreview(c.toDataURL("image/jpeg", 0.92));
+  c.toBlob(b => predict(b), "image/jpeg", 0.92);
+};
+
+el("btnUpload").onclick = () => el("fileInput").click();
+el("fileInput").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => showPreview(r.result);
+  r.readAsDataURL(f);
+  predict(f);
+  e.target.value = "";
+};
+
+function showPreview(dataUrl) {
+  el("previewImg").src = dataUrl;
+  el("previewImg").style.display = "block";
+  el("placeholder").style.display = "none";
+}
+
+async function predict(blob) {
+  el("loading").style.display = "block";
+  el("result").style.display = "none";
+  try {
+    const fd = new FormData();
+    fd.append("file", blob, "photo.jpg");
+    const res = await fetch("/predict", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "识别失败");
+    render(data);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    el("loading").style.display = "none";
+  }
+}
+
+function render(d) {
+  const healthy = !d.has_disease;
+  el("verdictTag").textContent = healthy ? "✅ 健康" : "⚠️ 发现病害";
+  el("verdictTag").className = "tag " + (healthy ? "healthy" : "sick");
+  el("verdictCls").textContent = d.class_cn;
+  el("verdictConf").textContent = "置信度 " + d.confidence + "%";
+  el("bars").innerHTML = d.probs.map((p, i) => `
+    <div class="bar-row ${i === 0 ? "top" : ""}">
+      <div class="bar-head"><b>${p.class_cn}</b><span>${p.prob}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:0"></div></div>
+    </div>`).join("");
+  requestAnimationFrame(() => {
+    el("bars").querySelectorAll(".bar-fill").forEach((f, i) => {
+      f.style.width = d.probs[i].prob + "%";
+    });
+  });
+  el("advice").innerHTML = "<b>防治建议：</b>" + d.advice;
+  el("result").style.display = "block";
+  el("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+</script>
+</body>
+</html>
