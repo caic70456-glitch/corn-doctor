@@ -1,8 +1,9 @@
-// utils/config.js - 服务端地址配置
-// 已指向 WorkBuddy 云端发布的线上后端（HTTPS），真机可直接用
-// sharecode 是该发布链接的访问凭证，调用接口时会自动拼上
+// utils/config.js - 识别服务地址配置
+// 指向本机局域网后端（server/api.py，0.0.0.0:5000）
+// 注意：电脑 IP 变化后要同步修改这里的 baseUrl（ipconfig 查看 IPv4 地址）
 module.exports = {
-  baseUrl: "https://corn-doctor-recognition.app.workbuddy.host",
-  shareCode: "FES5LKCPYG"
-  // 换成局域网调试时：baseUrl 改为 "http://192.168.x.x:8000"，shareCode 改为 ""
+  baseUrl: "http://10.45.90.142:5000",
+  shareCode: ""
+  // 开发者工具模拟器直接可用；真机需与电脑连同一 WiFi，
+  // 并在手机端打开调试模式（跳过合法域名校验）
 };

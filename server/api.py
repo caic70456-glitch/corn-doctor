@@ -49,6 +49,12 @@ CLASS_CN = {
     "Gray_Leaf_Spot": "灰斑病",
     "Healthy": "健康",
 }
+ADVICE = {
+    "Blight": "玉米叶斑病：及时摘除下部重病叶并带出田外销毁；发病初期可用苯醚甲环唑、吡唑醚菌酯等药剂喷雾防治，间隔7~10天连喷2次；合理密植、增施钾肥提高抗性。",
+    "Common_Rust": "玉米普通锈病：选用抗病品种；发病初期喷施三唑酮、戊唑醇或苯醚甲环唑，间隔7~10天连喷2~3次；注意田间排水、降低湿度。",
+    "Gray_Leaf_Spot": "玉米灰斑病：收获后清除病残体减少越冬菌源；发病初期用嘧菌酯、吡唑醚菌酯或苯醚甲环唑喷雾，重点保护果穗上下叶片。",
+    "Healthy": "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。",
+}
 # ImageNet 归一化（与训练端严格一致）
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -104,6 +110,7 @@ def predict():
             "class_cn": CLASS_CN[top[0]],
             "confidence": round(top[1] * 100, 2),
             "has_disease": top[0] != "Healthy",
+            "advice": ADVICE[top[0]],
             "probs": [{"class": c, "class_cn": CLASS_CN[c], "prob": round(p * 100, 2)}
                       for c, p in ranked],
         })
