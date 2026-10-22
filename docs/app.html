@@ -180,15 +180,19 @@ const ADVICE = {
   Healthy: "玉米长势健康，请继续保持良好水肥管理，定期巡查即可。"
 };
 
-/* onnxruntime-web 加载策略：
-   - JS 从 CDN 加载（jsdelivr 优先，npmmirror 兜底），<script> 标签不需要 CORS
-   - wasm 二进制自托管在 ./ort/（与页面同源）—— 实测部分网络环境下 CDN 的 wasm
-     fetch 会失败（CORS 或连通性），而同源资源与模型走同一条链路，稳定可靠 */
+/* onnxruntime-web 加载策略：JS、mjs 胶水模块、wasm 二进制三件套全部自托管在
+   ./ort/（与页面同源）。
+   原因（实测踩坑）：1.20 的 ort.wasm.min.js 内部用动态 import() 加载
+   ort-wasm-simd-threaded.mjs —— 当 JS 来自 CDN（跨域脚本）时，import 的相对
+   路径 base 解析失败（about:blank），报 "Failed to resolve module specifier"；
+   且部分网络环境下 CDN 的 wasm fetch 也会失败。同源自托管一次性解决全部问题。 */
 const ORT_MIRRORS = [
-  { js: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.wasm.min.js" },
-  { js: "https://registry.npmmirror.com/onnxruntime-web/1.17.3/files/dist/ort.wasm.min.js" }
+  { js: "./ort/ort.wasm.min.js" }
 ];
-const WASM_PATH = "./ort/";
+/* wasmPaths 必须是绝对 URL：ort.wasm.min.js 位于 ./ort/ 目录，其内部动态
+   import() 以脚本自身目录为 base 解析相对路径，写 "./ort/" 会变成 /ort/ort/；
+   由页面 URL 计算绝对路径，同时兼容 GitHub Pages 的子路径部署 */
+const WASM_PATH = new URL("ort/", location.href).href;
 
 let ortReady = false, session = null;
 
@@ -270,8 +274,10 @@ async function ensureModel() {
         graphOptimizationLevel: "all"
       });
     } catch (e) {
-      // ort wasm 侧异常可能以裸数字抛出，转成人话
-      throw new Error("模型初始化失败（wasm 推理环境异常" + (typeof e === "number" ? " #" + e : "") + "），请刷新页面重试");
+      // ort wasm 侧异常可能是裸数字，也可能是 Error；必须保留原始信息
+      const detail = typeof e === "number" ? "wasm 异常 #" + e
+        : (e && e.message ? e.message : String(e));
+      throw new Error("模型初始化失败（" + detail + "），请刷新页面重试");
     }
     return session;
   } finally {
